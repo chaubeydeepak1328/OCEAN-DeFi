@@ -77,178 +77,6 @@
         "type": "event"
     },
     {
-        "inputs": [
-            {
-                "internalType": "uint256[]",
-                "name": "directUSDs",
-                "type": "uint256[]"
-            },
-            {
-                "internalType": "uint256",
-                "name": "thresholdUSD",
-                "type": "uint256"
-            }
-        ],
-        "name": "calculateBoosterEligibility",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "pure",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "amount",
-                "type": "uint256"
-            }
-        ],
-        "name": "calculateClaimFee",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "amount",
-                "type": "uint256"
-            }
-        ],
-        "name": "calculateCommission",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "pure",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "amount",
-                "type": "uint256"
-            }
-        ],
-        "name": "calculateExitFee",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "principalUSD",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "dailyRateWad",
-                "type": "uint256"
-            }
-        ],
-        "name": "calculateProjectedEarnings",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "dailyUSD",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "monthlyUSD",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "pure",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "canClaim",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "canClaimRoyalty",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            },
-            {
-                "internalType": "uint256",
-                "name": "usdAmount",
-                "type": "uint256"
-            }
-        ],
-        "name": "canStake",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
         "inputs": [],
         "name": "cfg",
         "outputs": [
@@ -262,116 +90,13 @@
         "type": "function"
     },
     {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "getAccruedGrowth",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "growthRama",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint8",
-                "name": "milestones",
-                "type": "uint8"
-            }
-        ],
-        "name": "getAllRewardMilestones",
-        "outputs": [
-            {
-                "components": [
-                    {
-                        "internalType": "uint8",
-                        "name": "idx",
-                        "type": "uint8"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "thresholdUSD",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "rewardUSD",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "bool",
-                        "name": "claimed",
-                        "type": "bool"
-                    }
-                ],
-                "internalType": "struct OceanQueryUpgradeable.RewardMilestoneStatus[]",
-                "name": "list",
-                "type": "tuple[]"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint8",
-                "name": "count",
-                "type": "uint8"
-            }
-        ],
-        "name": "getAllRoyaltyLevels",
-        "outputs": [
-            {
-                "components": [
-                    {
-                        "internalType": "uint256",
-                        "name": "thresholdUSD",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "monthlyUSD",
-                        "type": "uint256"
-                    }
-                ],
-                "internalType": "struct OceanQueryUpgradeable.RoyaltyLevelInfo[]",
-                "name": "list",
-                "type": "tuple[]"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
         "inputs": [],
-        "name": "getAllSlabLevels",
+        "name": "getAddresses",
         "outputs": [
             {
-                "components": [
-                    {
-                        "internalType": "uint256",
-                        "name": "thresholdUSD",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint8",
-                        "name": "percent",
-                        "type": "uint8"
-                    }
-                ],
-                "internalType": "struct OceanQueryUpgradeable.SlabLevelInfo[]",
-                "name": "levels",
-                "type": "tuple[]"
+                "internalType": "address[8]",
+                "name": "addrs",
+                "type": "address[8]"
             }
         ],
         "stateMutability": "view",
@@ -384,335 +109,23 @@
                 "name": "user",
                 "type": "address"
             },
-            {
-                "internalType": "uint8",
-                "name": "milestones",
-                "type": "uint8"
-            }
-        ],
-        "name": "getAvailableRewards",
-        "outputs": [
-            {
-                "internalType": "uint8[]",
-                "name": "unlockable",
-                "type": "uint8[]"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "getChainDetails",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "chainId",
-                "type": "uint256"
-            },
-            {
-                "internalType": "address",
-                "name": "cfgAddr",
-                "type": "address"
-            },
-            {
-                "internalType": "address",
-                "name": "oracle",
-                "type": "address"
-            },
-            {
-                "internalType": "address",
-                "name": "ramaToken",
-                "type": "address"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "getContractAddress",
-        "outputs": [
-            {
-                "internalType": "address",
-                "name": "",
-                "type": "address"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "getCurrentRoyaltyLevel",
-        "outputs": [
-            {
-                "internalType": "uint8",
-                "name": "",
-                "type": "uint8"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "getCurrentSlabLevel",
-        "outputs": [
-            {
-                "internalType": "uint8",
-                "name": "",
-                "type": "uint8"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "pid",
-                "type": "uint256"
-            }
-        ],
-        "name": "getDailyGrowthRate",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "dailyRateWad",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "getDirectReferralCount",
-        "outputs": [
             {
                 "internalType": "uint32",
-                "name": "",
+                "name": "todayDayId",
                 "type": "uint32"
             }
         ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "getDirectReferrals",
+        "name": "getLast7DaysEarningsUSD",
         "outputs": [
             {
-                "internalType": "address[]",
-                "name": "",
-                "type": "address[]"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "pid",
-                "type": "uint256"
-            }
-        ],
-        "name": "getFreezeEndTime",
-        "outputs": [
-            {
-                "internalType": "uint64",
-                "name": "",
-                "type": "uint64"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "getIncomeStreamTotals",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "growth",
-                "type": "uint256"
+                "internalType": "uint32[7]",
+                "name": "dayIds",
+                "type": "uint32[7]"
             },
             {
-                "internalType": "uint256",
-                "name": "slab",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "royalty",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "overrideB",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "rewards",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "getLegVolumes",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "L1",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "L2",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "Lrest",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "getLifetimeCapProgress",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "bps",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "getMinimumStake",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "amount",
-                "type": "uint256"
-            }
-        ],
-        "name": "getNetClaimAmount",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "getNextRoyaltyClaimDate",
-        "outputs": [
-            {
-                "internalType": "uint64",
-                "name": "lastPaidMonthEpoch",
-                "type": "uint64"
-            },
-            {
-                "internalType": "uint64",
-                "name": "nextMonthEpoch",
-                "type": "uint64"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "getOneTimeRewardIncome",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
+                "internalType": "uint256[7]",
+                "name": "usdAmounts",
+                "type": "uint256[7]"
             }
         ],
         "stateMutability": "view",
@@ -726,74 +139,17 @@
                 "type": "address"
             },
             {
-                "internalType": "uint8",
-                "name": "milestones",
-                "type": "uint8"
+                "internalType": "uint256",
+                "name": "limit",
+                "type": "uint256"
             }
         ],
-        "name": "getOneTimeRewardStatus",
+        "name": "getLastTransactions",
         "outputs": [
             {
-                "components": [
-                    {
-                        "internalType": "uint8",
-                        "name": "idx",
-                        "type": "uint8"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "thresholdUSD",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "rewardUSD",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "bool",
-                        "name": "claimed",
-                        "type": "bool"
-                    }
-                ],
-                "internalType": "struct OceanQueryUpgradeable.RewardMilestoneStatus[]",
-                "name": "list",
-                "type": "tuple[]"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "getPlatformRules",
-        "outputs": [
-            {
-                "components": [
-                    {
-                        "internalType": "uint256",
-                        "name": "minStakeUSD",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint16",
-                        "name": "claimFeeBps",
-                        "type": "uint16"
-                    },
-                    {
-                        "internalType": "uint16",
-                        "name": "exitFeeBps",
-                        "type": "uint16"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "capX",
-                        "type": "uint256"
-                    }
-                ],
-                "internalType": "struct OceanQueryUpgradeable.PlatformRules",
-                "name": "r",
-                "type": "tuple"
+                "internalType": "bytes[]",
+                "name": "entries",
+                "type": "bytes[]"
             }
         ],
         "stateMutability": "view",
@@ -802,31 +158,12 @@
     {
         "inputs": [
             {
-                "internalType": "uint256",
-                "name": "pid",
-                "type": "uint256"
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
             }
         ],
-        "name": "getPortfolioCapProgress",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "bps",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "pid",
-                "type": "uint256"
-            }
-        ],
-        "name": "getPortfolioDetails",
+        "name": "getPortfolioSummaries",
         "outputs": [
             {
                 "components": [
@@ -847,18 +184,18 @@
                     },
                     {
                         "internalType": "uint256",
+                        "name": "capRama",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
                         "name": "creditedRama",
                         "type": "uint256"
                     },
                     {
-                        "internalType": "uint64",
-                        "name": "createdAt",
-                        "type": "uint64"
-                    },
-                    {
-                        "internalType": "uint64",
-                        "name": "frozenUntil",
-                        "type": "uint64"
+                        "internalType": "uint8",
+                        "name": "capPct",
+                        "type": "uint8"
                     },
                     {
                         "internalType": "bool",
@@ -871,9 +208,9 @@
                         "type": "uint8"
                     },
                     {
-                        "internalType": "uint8",
-                        "name": "capPct",
-                        "type": "uint8"
+                        "internalType": "uint256",
+                        "name": "dailyRateWad",
+                        "type": "uint256"
                     },
                     {
                         "internalType": "bool",
@@ -881,23 +218,93 @@
                         "type": "bool"
                     },
                     {
-                        "internalType": "uint256",
-                        "name": "capRama",
-                        "type": "uint256"
+                        "internalType": "uint64",
+                        "name": "createdAt",
+                        "type": "uint64"
                     },
                     {
-                        "internalType": "uint256",
-                        "name": "dailyRateWad",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "capProgressBps",
-                        "type": "uint256"
+                        "internalType": "uint64",
+                        "name": "frozenUntil",
+                        "type": "uint64"
                     }
                 ],
-                "internalType": "struct OceanQueryUpgradeable.UserPortfolio",
-                "name": "up",
+                "internalType": "struct OceanViewUpgradeable.PortfolioSummary[]",
+                "name": "out",
+                "type": "tuple[]"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            }
+        ],
+        "name": "getPortfolioTotals",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "totalValueUSD",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "totalEarnedRama",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint32",
+                "name": "directRefs",
+                "type": "uint32"
+            },
+            {
+                "internalType": "uint256",
+                "name": "qualifiedVolumeUSD",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint8",
+                "name": "royaltyLevel",
+                "type": "uint8"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            }
+        ],
+        "name": "getRoyaltyPanel",
+        "outputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "uint8",
+                        "name": "currentLevel",
+                        "type": "uint8"
+                    },
+                    {
+                        "internalType": "uint64",
+                        "name": "lastPaidMonthEpoch",
+                        "type": "uint64"
+                    },
+                    {
+                        "internalType": "bool",
+                        "name": "paused",
+                        "type": "bool"
+                    }
+                ],
+                "internalType": "struct OceanViewUpgradeable.RoyaltyPanel",
+                "name": "rp",
                 "type": "tuple"
             }
         ],
@@ -912,392 +319,33 @@
                 "type": "address"
             }
         ],
-        "name": "getPortfolioGrowthIncome",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "getQualifiedVolume",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "usdQualified",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint8",
-                "name": "idx",
-                "type": "uint8"
-            }
-        ],
-        "name": "getRewardMilestoneDetails",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "thresholdUSD",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "rewardUSD",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "getRoyaltyIncome",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint8",
-                "name": "idx",
-                "type": "uint8"
-            }
-        ],
-        "name": "getRoyaltyLevelDetails",
+        "name": "getSlabPanel",
         "outputs": [
             {
                 "components": [
                     {
-                        "internalType": "uint256",
-                        "name": "thresholdUSD",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "monthlyUSD",
-                        "type": "uint256"
-                    }
-                ],
-                "internalType": "struct OceanQueryUpgradeable.RoyaltyLevelInfo",
-                "name": "info",
-                "type": "tuple"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "getRoyaltyPayoutsReceived",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "totalPaidMonths",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "getRoyaltyRenewalRequirement",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "paused",
-                "type": "bool"
-            },
-            {
-                "internalType": "uint256",
-                "name": "lastT",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "nowT",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "getSafeWalletBalance",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "ramaBalance",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "getSameSlabOverrideEarnings",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "l1",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "l2",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "l3",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "getSameSlabOverrideIncome",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "getSameSlabPartners",
-        "outputs": [
-            {
-                "internalType": "address[]",
-                "name": "firstWave",
-                "type": "address[]"
-            },
-            {
-                "internalType": "address[]",
-                "name": "secondWave",
-                "type": "address[]"
-            },
-            {
-                "internalType": "address[]",
-                "name": "thirdWave",
-                "type": "address[]"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "getSlabClaimStatus",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "canClaim",
-                "type": "bool"
-            },
-            {
-                "internalType": "uint64",
-                "name": "lastClaimAtEpoch",
-                "type": "uint64"
-            },
-            {
-                "internalType": "uint64",
-                "name": "currentEpoch",
-                "type": "uint64"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "getSlabIncome",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "getSlabIncomeAvailable",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "amount",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint8",
-                "name": "idx",
-                "type": "uint8"
-            }
-        ],
-        "name": "getSlabLevelDetails",
-        "outputs": [
-            {
-                "components": [
-                    {
-                        "internalType": "uint256",
-                        "name": "thresholdUSD",
-                        "type": "uint256"
-                    },
-                    {
                         "internalType": "uint8",
-                        "name": "percent",
-                        "type": "uint8"
-                    }
-                ],
-                "internalType": "struct OceanQueryUpgradeable.SlabLevelInfo",
-                "name": "info",
-                "type": "tuple"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "member",
-                "type": "address"
-            }
-        ],
-        "name": "getTeamMemberDetails",
-        "outputs": [
-            {
-                "components": [
-                    {
-                        "internalType": "address",
-                        "name": "member",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "uint8",
-                        "name": "slabLevel",
+                        "name": "slabIndex",
                         "type": "uint8"
                     },
                     {
-                        "internalType": "uint8",
-                        "name": "royaltyLevel",
-                        "type": "uint8"
+                        "internalType": "uint256",
+                        "name": "qualifiedVolumeUSD",
+                        "type": "uint256"
                     },
                     {
                         "internalType": "uint32",
-                        "name": "directs",
+                        "name": "directMembers",
                         "type": "uint32"
                     },
                     {
                         "internalType": "bool",
-                        "name": "hasActive50",
+                        "name": "canClaim",
                         "type": "bool"
                     }
                 ],
-                "internalType": "struct OceanQueryUpgradeable.TeamMemberBrief",
-                "name": "tmb",
+                "internalType": "struct OceanViewUpgradeable.SlabPanel",
+                "name": "sp",
                 "type": "tuple"
             }
         ],
@@ -1310,90 +358,13 @@
                 "internalType": "address",
                 "name": "user",
                 "type": "address"
-            },
-            {
-                "internalType": "uint8",
-                "name": "level",
-                "type": "uint8"
             }
         ],
-        "name": "getTeamMembersByLevel",
-        "outputs": [
-            {
-                "internalType": "address[]",
-                "name": "addrs",
-                "type": "address[]"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "getTeamVolume",
+        "name": "getSumOfUserStakes",
         "outputs": [
             {
                 "internalType": "uint256",
-                "name": "qualifiedUSD",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "L1",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "L2",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "Lrest",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "getTotalClaimableIncome",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "sum",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "getTotalRewardsClaimed",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "count",
+                "name": "amount",
                 "type": "uint256"
             }
         ],
@@ -1413,31 +384,22 @@
                 "type": "uint8"
             }
         ],
-        "name": "getTotalTeamSize",
+        "name": "getTeamNetwork",
         "outputs": [
+            {
+                "internalType": "address[]",
+                "name": "directs",
+                "type": "address[]"
+            },
+            {
+                "internalType": "uint32",
+                "name": "directCount",
+                "type": "uint32"
+            },
             {
                 "internalType": "uint256",
-                "name": "total",
+                "name": "teamCount",
                 "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "bytes32",
-                "name": "txHash",
-                "type": "bytes32"
-            }
-        ],
-        "name": "getTransactionDetails",
-        "outputs": [
-            {
-                "internalType": "bytes",
-                "name": "opaque",
-                "type": "bytes"
             }
         ],
         "stateMutability": "view",
@@ -1451,252 +413,115 @@
                 "type": "address"
             },
             {
-                "internalType": "bytes32",
-                "name": "t",
-                "type": "bytes32"
-            },
-            {
-                "internalType": "uint256",
-                "name": "limit",
-                "type": "uint256"
+                "internalType": "uint8",
+                "name": "teamDepthMax",
+                "type": "uint8"
             }
         ],
-        "name": "getTransactionsByType",
-        "outputs": [
-            {
-                "internalType": "bytes[]",
-                "name": "entries",
-                "type": "bytes[]"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "getUplineAddress",
-        "outputs": [
-            {
-                "internalType": "address",
-                "name": "",
-                "type": "address"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "getUserPortfolio",
+        "name": "getUserOverview",
         "outputs": [
             {
                 "components": [
                     {
                         "internalType": "uint256",
-                        "name": "pid",
+                        "name": "totalStakedRama",
                         "type": "uint256"
                     },
                     {
                         "internalType": "uint256",
-                        "name": "principalRama",
+                        "name": "totalStakedUSD",
                         "type": "uint256"
                     },
                     {
                         "internalType": "uint256",
-                        "name": "principalUSD",
+                        "name": "totalSafeWalletRama",
                         "type": "uint256"
                     },
                     {
                         "internalType": "uint256",
-                        "name": "creditedRama",
+                        "name": "totalRoiUsdPaid",
                         "type": "uint256"
                     },
                     {
-                        "internalType": "uint64",
-                        "name": "createdAt",
-                        "type": "uint64"
+                        "internalType": "uint32",
+                        "name": "directCount",
+                        "type": "uint32"
                     },
                     {
-                        "internalType": "uint64",
-                        "name": "frozenUntil",
-                        "type": "uint64"
+                        "internalType": "uint256",
+                        "name": "teamCount",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "uplineSponsor",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "uint8",
+                        "name": "slabIndex",
+                        "type": "uint8"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "qualifiedVolumeUSD",
+                        "type": "uint256"
                     },
                     {
                         "internalType": "bool",
-                        "name": "booster",
+                        "name": "slabCanClaim",
                         "type": "bool"
                     },
                     {
                         "internalType": "uint8",
-                        "name": "tier",
+                        "name": "royaltyTier",
                         "type": "uint8"
                     },
                     {
-                        "internalType": "uint8",
-                        "name": "capPct",
-                        "type": "uint8"
+                        "internalType": "uint64",
+                        "name": "royaltyLastMonthEpoch",
+                        "type": "uint64"
                     },
                     {
                         "internalType": "bool",
-                        "name": "active",
+                        "name": "royaltyPaused",
                         "type": "bool"
-                    },
+                    }
+                ],
+                "internalType": "struct OceanViewUpgradeable.UserOverview",
+                "name": "ov",
+                "type": "tuple"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            }
+        ],
+        "name": "getWalletPanel",
+        "outputs": [
+            {
+                "components": [
                     {
                         "internalType": "uint256",
-                        "name": "capRama",
+                        "name": "safeRama",
                         "type": "uint256"
                     },
                     {
                         "internalType": "uint256",
-                        "name": "dailyRateWad",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "capProgressBps",
+                        "name": "lifetimeRoiUsd",
                         "type": "uint256"
                     }
                 ],
-                "internalType": "struct OceanQueryUpgradeable.UserPortfolio[]",
-                "name": "list",
-                "type": "tuple[]"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "getUserStatus",
-        "outputs": [
-            {
-                "internalType": "uint8",
-                "name": "slabLevel",
-                "type": "uint8"
-            },
-            {
-                "internalType": "uint8",
-                "name": "royaltyLevel",
-                "type": "uint8"
-            },
-            {
-                "internalType": "uint32",
-                "name": "directs",
-                "type": "uint32"
-            },
-            {
-                "internalType": "uint256",
-                "name": "qualifiedVolumeUSD",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            },
-            {
-                "internalType": "uint256",
-                "name": "limit",
-                "type": "uint256"
-            }
-        ],
-        "name": "getUserTransactions",
-        "outputs": [
-            {
-                "internalType": "bytes[]",
-                "name": "entries",
-                "type": "bytes[]"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "getWithdrawalFreezeStatus",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "hasFreeze",
-                "type": "bool"
-            },
-            {
-                "internalType": "uint64",
-                "name": "earliestEnd",
-                "type": "uint64"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            },
-            {
-                "internalType": "uint8",
-                "name": "slabIdx",
-                "type": "uint8"
-            }
-        ],
-        "name": "hasMinimumDirects",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "pid",
-                "type": "uint256"
-            }
-        ],
-        "name": "hasReachedCap",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
+                "internalType": "struct OceanViewUpgradeable.WalletPanel",
+                "name": "wp",
+                "type": "tuple"
             }
         ],
         "stateMutability": "view",
@@ -1713,44 +538,6 @@
         "name": "initialize",
         "outputs": [],
         "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "isInCooldown",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "pid",
-                "type": "uint256"
-            }
-        ],
-        "name": "isPortfolioActive",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "view",
         "type": "function"
     },
     {
@@ -1784,6 +571,30 @@
         "name": "renounceOwnership",
         "outputs": [],
         "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "root",
+                "type": "address"
+            },
+            {
+                "internalType": "uint8",
+                "name": "maxDepth",
+                "type": "uint8"
+            }
+        ],
+        "name": "teamCountBfs",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
         "type": "function"
     },
     {
@@ -1828,25 +639,6 @@
         "name": "upgradeToAndCall",
         "outputs": [],
         "stateMutability": "payable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "a",
-                "type": "address"
-            }
-        ],
-        "name": "validateBeneficiaryAddress",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "pure",
         "type": "function"
     }
 ]
