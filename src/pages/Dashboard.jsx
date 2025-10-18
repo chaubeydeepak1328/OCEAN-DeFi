@@ -25,10 +25,14 @@ export default function Dashboard() {
   const [portfolioIds, setPortFolioId] = useState([])
   const [selectedPid, setSelectedPid] = useState(1);
   const [portFolioDetails, setFortFolioDetails] = useState();
+  const [DashBoardDetail, setDashboardDetails] = useState();
 
 
   const getTOtalPortFolio = useStore((s) => s.getTOtalPortFolio);
   const getPortFoliById = useStore((s) => s.getPortFoliById);
+  const getDashboardDetails = useStore((s) => s.getDashboardDetails);
+
+
   const userAddress = localStorage.getItem("userAddress") || null;
 
   const fetchPortFolio = async () => {
@@ -43,12 +47,27 @@ export default function Dashboard() {
     }
   }
 
+  // ===========================================================================
+  // Dashboard details
+  // ---------------------------------------------------------------------------
+
+  const getDashboardInfo = async () => {
+    try {
+      if (!userAddress) {
+        return
+      }
+      const response = await getDashboardDetails(userAddress);
+      console.log(response)
+      setDashboardDetails(response)
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
   useEffect(() => {
+    getDashboardInfo();
     fetchPortFolio()
   }, [])
-
-
-
 
   const GetPortFolioById = async () => {
     try {
@@ -61,16 +80,12 @@ export default function Dashboard() {
   }
 
   useEffect(() => {
-    if (selectedPid !== 1 && selectedPid) {
+    if (selectedPid) {
       GetPortFolioById()
     }
   }, [selectedPid])
 
   // --- Portfolio ID Select (array of numeric IDs) -----------------------------
-
-
-
-
 
   useEffect(() => {
     // if IDs change and current selection is missing, reset to first
@@ -86,7 +101,9 @@ export default function Dashboard() {
     }
   }, [selectedPid]);
 
-  // ---------------------------------------------------------------------------
+
+
+
 
   const captPct = parseFloat(portFolioDetails?.capPct);
   const principalUSD = parseFloat(portFolioDetails?.principalUSD) / 1e6;
@@ -158,7 +175,7 @@ export default function Dashboard() {
             </div>
             <p className="text-xs sm:text-sm font-medium text-neon-orange uppercase tracking-wide">Team Network</p>
           </div>
-          <p className="text-xl sm:text-2xl font-bold mb-2 text-neon-orange relative z-10">{userStatus.directChildrenCount} Direct</p>
+          <p className="text-xl sm:text-2xl font-bold mb-2 text-neon-orange relative z-10">{parseInt(DashBoardDetail?.slabPanel?.directMembers)} Direct</p>
           <div className="flex items-center gap-1 text-xs text-neon-orange/70 relative z-10">
             <span>View Team</span>
             <ArrowUpRight size={14} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
@@ -174,7 +191,7 @@ export default function Dashboard() {
             <p className="text-xs sm:text-sm font-medium text-cyan-400 uppercase tracking-wide">Safe Wallet</p>
           </div>
           <NumberPopup
-            value={formatRAMA(portfolio.safeWalletRAMA)}
+            value={formatRAMA(DashBoardDetail?.safeWalletRAMAWei)}
             label="Safe Wallet"
             className="text-xl sm:text-2xl font-bold mb-2 text-cyan-400 relative z-10"
           />
@@ -237,40 +254,55 @@ export default function Dashboard() {
 
             <div className="space-y-4">
               <div>
-                <div className="flex justify-between items-center mb-2 gap-2">
-                  <span className="text-xs sm:text-sm font-medium text-cyan-400 uppercase tracking-wider">Portfolio Cap Progress</span>
-                  <span className="text-xs sm:text-sm font-bold text-neon-green">{progress}%</span>
-                </div>
-                <div className="h-3 bg-dark-900 rounded-full overflow-hidden border border-cyan-500/30 relative">
-                  <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 to-neon-green/20 animate-pulse" />
-                  <div
-                    className="h-full bg-gradient-to-r from-cyan-500 to-neon-green rounded-full transition-all relative z-10"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-                <p className="text-xs text-cyan-300/90 mt-1">
-                  {formatUSD(parseFloat(portFolioDetails?.principalUSD) / 1e6)} / {formatUSD((parseFloat(portFolioDetails?.principalUSD) / 1e6) * parseFloat(portFolioDetails?.capPct) / 1e2)}
-                  <span className="ml-1 text-neon-green">{portFolioDetails?.booster ? '(250% Cap)' : '(200% Cap)'}</span>
-                </p>
+
+                {
+                  portfolioIds.length != 0 ? (
+                    <>
+                      <div className="flex justify-between items-center mb-2 gap-2">
+                        <span className="text-xs sm:text-sm font-medium text-cyan-400 uppercase tracking-wider">Portfolio Cap Progress</span>
+                        <span className="text-xs sm:text-sm font-bold text-neon-green">{progress}%</span>
+                      </div>
+                      <div className="h-3 bg-dark-900 rounded-full overflow-hidden border border-cyan-500/30 relative">
+                        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 to-neon-green/20 animate-pulse" />
+                        <div
+                          className="h-full bg-gradient-to-r from-cyan-500 to-neon-green rounded-full transition-all relative z-10"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-cyan-300/90 mt-1">
+                        {formatUSD(parseFloat(portFolioDetails?.principalUSD) / 1e6)} / {formatUSD((parseFloat(portFolioDetails?.principalUSD) / 1e6) * parseFloat(portFolioDetails?.capPct) / 1e2)}
+                        <span className="ml-1 text-neon-green">{portFolioDetails?.booster ? '(250% Cap)' : '(200% Cap)'}</span>
+                      </p>
+                    </>
+                  ) : (
+                    <div>
+                      <p>
+                        No PortFolio Data Available
+                      </p>
+                    </div>
+                  )
+                }
               </div>
 
-              <div className="grid grid-cols-3 gap-2 sm:gap-4">
-                <div className="p-3 sm:p-4 cyber-glass rounded-xl border border-cyan-500/30 hover:border-cyan-500/80 transition-all group">
-                  <p className="text-xs text-cyan-400 font-medium mb-1 uppercase tracking-wider">Daily Rate</p>
-                  <p className="text-lg sm:text-xl font-bold text-cyan-300 group-hover:text-neon-glow transition-all">{(parseFloat(portFolioDetails?.dailyRateWad) / 1e18) * 100}%</p>
+              {portfolioIds.length !== 0 && (
+                <div className="grid grid-cols-3 gap-2 sm:gap-4">
+                  <div className="p-3 sm:p-4 cyber-glass rounded-xl border border-cyan-500/30 hover:border-cyan-500/80 transition-all group">
+                    <p className="text-xs text-cyan-400 font-medium mb-1 uppercase tracking-wider">Daily Rate</p>
+                    <p className="text-lg sm:text-xl font-bold text-cyan-300 group-hover:text-neon-glow transition-all">{(parseFloat(portFolioDetails?.dailyRateWad) / 1e18) * 100}%</p>
+                  </div>
+                  <div className="p-3 sm:p-4 cyber-glass rounded-xl border border-neon-green/30 hover:border-neon-green/80 transition-all group">
+                    <p className="text-xs text-neon-green font-medium mb-1 uppercase tracking-wider">Direct Refs</p>
+                    <p className="text-lg sm:text-xl font-bold text-neon-green group-hover:text-neon-glow transition-all">{parseInt(DashBoardDetail?.slabPanel?.directMembers)}</p>
+                  </div>
+                  <div className="p-3 sm:p-4 cyber-glass rounded-xl border border-neon-orange/30 hover:border-neon-orange/80 transition-all group">
+                    <p className="text-xs text-neon-orange font-medium mb-1 uppercase tracking-wider">Slab Tier</p>
+                    <p className="text-lg sm:text-xl font-bold text-neon-orange group-hover:text-neon-glow transition-all">
+                      {['Coral Reef', 'Shallow Waters', 'Tide Pool', 'Wave Crest', 'Open Sea', 'Deep Current', 'Ocean Floor', 'Abyssal Zone', 'Mariana Trench', 'Pacific Master', 'Ocean Sovereign'][parseInt(DashBoardDetail?.slabPanel?.slabIndex) - 1] || 'None'}
+                    </p>
+                    <p className="text-xs text-neon-orange/70 mt-0.5">Level {parseInt(DashBoardDetail?.slabPanel?.slabIndex) }</p>
+                  </div>
                 </div>
-                <div className="p-3 sm:p-4 cyber-glass rounded-xl border border-neon-green/30 hover:border-neon-green/80 transition-all group">
-                  <p className="text-xs text-neon-green font-medium mb-1 uppercase tracking-wider">Direct Refs</p>
-                  <p className="text-lg sm:text-xl font-bold text-neon-green group-hover:text-neon-glow transition-all">{userStatus.directChildrenCount}</p>
-                </div>
-                <div className="p-3 sm:p-4 cyber-glass rounded-xl border border-neon-orange/30 hover:border-neon-orange/80 transition-all group">
-                  <p className="text-xs text-neon-orange font-medium mb-1 uppercase tracking-wider">Slab Tier</p>
-                  <p className="text-lg sm:text-xl font-bold text-neon-orange group-hover:text-neon-glow transition-all">
-                    {['Coral Reef', 'Shallow Waters', 'Tide Pool', 'Wave Crest', 'Open Sea', 'Deep Current', 'Ocean Floor', 'Abyssal Zone', 'Mariana Trench', 'Pacific Master', 'Ocean Sovereign'][parseInt(userStatus.currentSlabIndex) - 1] || 'None'}
-                  </p>
-                  <p className="text-xs text-neon-orange/70 mt-0.5">Level {userStatus.currentSlabIndex}</p>
-                </div>
-              </div>
+              )}
             </div>
           </div>
 

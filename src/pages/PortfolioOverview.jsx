@@ -129,7 +129,7 @@ export default function PortfolioOverview() {
           </div>
         </div>
         
-        <div className="cyber-glass rounded-xl p-4 border border-neon-green/30 hover:border-neon-green/80 relative overflow-hidden group transition-all">
+        {/* <div className="cyber-glass rounded-xl p-4 border border-neon-green/30 hover:border-neon-green/80 relative overflow-hidden group transition-all">
           <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-neon-green/50 to-transparent" />
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs text-neon-green/90 uppercase tracking-wide">
@@ -148,7 +148,7 @@ export default function PortfolioOverview() {
             <span className="text-cyan-400/70">Daily Rate:</span>
             <span className="text-neon-green font-semibold">{dailyRate}%</span>
           </div>
-        </div>
+        </div> */}
         {" "}
 
         <div className="cyber-glass rounded-xl p-4 border border-neon-green/30 hover:border-neon-green/80 relative overflow-hidden group transition-all">

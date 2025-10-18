@@ -4,7 +4,7 @@ import Swal from "sweetalert2";
 import UserRegistryABI from './Contract_ABI/UserRegistry.json';
 import PortFolioManagerABI from './Contract_ABI/PortFolioManager.json'
 import OceanQueryUpgradeableABI from './Contract_ABI/OceanQueryUpgradeableABI.json'
-
+import OceanViewUpgradeableABI from './Contract_ABI/OCEANVIEWUPGRADABLEABI.json'
 
 
 const Contract = {
@@ -37,6 +37,17 @@ const readLocalJSON = (key) => {
     return null;
   }
 };
+
+
+
+const slabsName = ["None", "Coral Reef", "Shallow Waters", "Tide Pool", "Wave Crest", 'Open Sea', "Deep Current", "Ocean Floor", "Abyssal Zone", "Mariana Trench", "Pacific Master", "Ocean Sovereign"]
+
+
+
+
+
+
+
 
 
 
@@ -147,9 +158,6 @@ export const useStore = create((set, get) => ({
     }
   },
 
-
-
-
   checkUserById: async (userId) => {
     try {
       if (!userId) {
@@ -167,7 +175,6 @@ export const useStore = create((set, get) => ({
       throw error;
     }
   },
-
 
   getUserDetails: async (Value) => {
     try {
@@ -199,7 +206,7 @@ export const useStore = create((set, get) => ({
 
       localStorage.setItem("userAddress", UserAddress)
 
-      return {response,UserAddress}
+      return { response, UserAddress }
     } catch (error) {
       console.error('User id/Address error:', error);
       Swal.fire({ icon: 'error', title: 'id/Address  error', text: error?.message || 'Unknown error' });
@@ -235,7 +242,7 @@ export const useStore = create((set, get) => ({
       if (!userAddress) {
         return;
       }
-      
+
 
       const contract = new web3.eth.Contract(PortFolioManagerABI, Contract["PortFolioManager"]);
       const contract1 = new web3.eth.Contract(OceanQueryUpgradeableABI, Contract["OceanQueryUpgradeable"]);
@@ -248,7 +255,7 @@ export const useStore = create((set, get) => ({
         ProtFolioDetail = await contract1.methods.getPortfolioDetails(ArrPortfolio[0]).call();
       }
 
-      
+
       return { ArrPortfolio, ProtFolioDetail }
 
     } catch (error) {
@@ -257,7 +264,6 @@ export const useStore = create((set, get) => ({
       throw error;
     }
   },
-
 
   getPortFoliById: async (portId) => {
     console.log(portId)
@@ -274,7 +280,51 @@ export const useStore = create((set, get) => ({
       Swal.fire({ icon: 'error', title: 'Portfolio error', text: error?.message || 'Unknown error' });
       throw error;
     }
+  },
+
+  getDashboardDetails: async (userAddress) => {
+    try {
+      if (!userAddress) throw new Error("Missing user address");
+
+      const oceanQuery = new web3.eth.Contract(
+        OceanQueryUpgradeableABI,
+        Contract["OceanQueryUpgradeable"]
+      );
+      const oceanView = new web3.eth.Contract(
+        OceanViewUpgradeableABI,
+        Contract["OceanViewUpgradeable"]
+      );
+
+      // Fire all calls at once
+      const [safeWalletBalanceRaw, slabPanelRaw] = await Promise.all([
+        // oceanQuery.methods.getDirectReferralCount(userAddress).call({ from: userAddress }),
+        // <-- replace with your actual balance method:
+        oceanQuery.methods.getSafeWalletBalance(userAddress).call({ from: userAddress }),
+        oceanView.methods.getSlabPanel(userAddress).call({ from: userAddress }),
+      ]);
+
+      // Normalize as needed (avoid Number for >53-bit values)
+      const toNum = (v) => (typeof v === 'bigint' ? Number(v) : Number(String(v)));
+      const toStr = (v) => (v == null ? "" : String(v));
+
+      return {
+        // directChildrenCount: toNum(referralCountRaw),
+        safeWalletRAMAWei: toStr(safeWalletBalanceRaw), // keep as string/BigInt; format at render
+        slabPanel: slabPanelRaw,                // map fields if needed
+      };
+
+    } catch (error) {
+      console.log(error)
+    }
   }
+
+
+
+  // =====================================================================
+  // Portfolio 
+  // =====================================================================
+
+
 
 
 
