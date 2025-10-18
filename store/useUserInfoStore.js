@@ -18,6 +18,7 @@ const Contract = {
   AdminControl: "0xcD8eB92E927Aa9C0DC5e58d8383D4aE211F73f96",
   MainWallet: "0x61d66989f2fA03818Fcf2f4dCb586C17D4fa9c47",
   SafeWallet: "0x6a4a05431A5826fa35A2e9535Da662f47189232f",
+  OCEANVIEWUPGRADABLE:"0x4A3f63Cc3B20dB20E8dCd42daAd1846374B10cCa"
 };
 
 const INFURA_URL = "https://blockchain.ramestta.com";
@@ -224,6 +225,9 @@ export const useStore = create((set, get) => ({
       throw error;
     }
   },
+
+
+  
 
 
 }));

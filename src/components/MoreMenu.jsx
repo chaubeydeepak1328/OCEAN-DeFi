@@ -1,7 +1,11 @@
-import { X, Users, Award, Trophy, Gift, Vault, History, TrendingUp, Info, Settings, FileDown, LogOut, Presentation, BookOpen } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+// src/components/MoreMenu.jsx
+import {
+  X, Users, Award, Trophy, Gift, Vault, History,
+  TrendingUp, Info, Settings, FileDown, LogOut, Presentation, BookOpen
+} from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { generateOceanDefiPDF } from '../utils/generatePDF';
-import { useDisconnect } from 'wagmi';
+import { useAccount, useDisconnect } from 'wagmi';
 
 const menuSections = [
   {
@@ -10,7 +14,7 @@ const menuSections = [
       { path: '/dashboard/slab', label: 'Slab Income', icon: Award },
       { path: '/dashboard/royalty', label: 'Royalty Program', icon: Trophy },
       { path: '/dashboard/rewards', label: 'One-Time Rewards', icon: Gift },
-    ]
+    ],
   },
   {
     title: 'Network & Assets',
@@ -18,7 +22,7 @@ const menuSections = [
       { path: '/dashboard/team', label: 'Team Network', icon: Users },
       { path: '/dashboard/safe-wallet', label: 'Safe Wallet', icon: Vault },
       { path: '/dashboard/transaction-history', label: 'Transaction History', icon: History },
-    ]
+    ],
   },
   {
     title: 'Analytics & Info',
@@ -27,26 +31,57 @@ const menuSections = [
       { path: '/dashboard/presentation', label: 'Presentation', icon: Presentation },
       { path: '/dashboard/ocean-defi-guide', label: 'About Ocean DeFi', icon: BookOpen },
       { path: '/dashboard/about', label: 'About & Vision', icon: Info },
-    ]
-  }
+    ],
+  },
 ];
 
-export default function MoreMenu({ isOpen, onClose }) {
-  const navigate = useNavigate();
+export default function MoreMenu({ isOpen, onClose = () => {} }) {
+  const { connector } = useAccount();
+  const { disconnect, disconnectAsync } = useDisconnect();
 
-  const { disconnect } = useDisconnect()
+  const nukeWalletCaches = () => {
+    const keys = [
+      'wagmi.store',
+      'walletconnect',                  // WalletConnect v1
+      'wc',                             // WalletConnect v2
+      'WALLETCONNECT_DEEPLINK_CHOICE',
+      'WEB3_CONNECT_CACHED_PROVIDER',
+      'W3M_CONNECTED_CONNECTOR',
+      'WCM_VERSION',
+    ];
+    keys.forEach((k) => {
+      try { localStorage.removeItem(k); } catch {}
+      try { sessionStorage.removeItem(k); } catch {}
+    });
+  };
 
-  const handleDisconnect = async() => {
-    await disconnect()
-    localStorage.removeItem('currentUser');
-    localStorage.removeItem('isAuthenticated');
-    navigate('/login');
-    onClose();
+  const handleDisconnect = async () => {
+    try {
+      // 1) Disconnect via wagmi
+      if (disconnectAsync) await disconnectAsync();
+      else if (disconnect) await Promise.resolve(disconnect());
+
+      // 2) Also tear down provider sessions (WalletConnect/injected)
+      try {
+        const provider = await connector?.getProvider?.();
+        if (provider?.disconnect) await provider.disconnect();   // EIP-1193
+        if (provider?.wc?.destroy) await provider.wc.destroy();  // WC v2
+        if (provider?.close) await provider.close();             // some injected
+      } catch {}
+
+      // 3) Clear caches + your own auth marker
+      nukeWalletCaches();
+      try { localStorage.removeItem('userAddress'); } catch {}
+    } finally {
+      // Important: avoid navigate()/onClose() churn.
+      // Do a hard replace so AuthGate catches you at /login without flicker.
+      window.location.replace('/login');
+    }
   };
 
   const handlePDFDownload = () => {
     generateOceanDefiPDF();
-    onClose();
+    onClose(); // safe to close; not changing routes
   };
 
   if (!isOpen) return null;
@@ -81,20 +116,17 @@ export default function MoreMenu({ isOpen, onClose }) {
                   {section.title}
                 </h3>
                 <div className="space-y-1">
-                  {section.items.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        onClick={onClose}
-                        className="flex items-center gap-3 px-4 py-3 rounded-lg transition-all hover:bg-cyan-500/10 text-slate-400 hover:text-cyan-300 border border-transparent hover:border-cyan-500/20 group"
-                      >
-                        <Icon size={20} className="flex-shrink-0" />
-                        <span className="text-sm font-medium flex-1">{item.label}</span>
-                      </Link>
-                    );
-                  })}
+                  {section.items.map(({ path, label, icon: Icon }) => (
+                    <Link
+                      key={path}
+                      to={path}
+                      onClick={onClose}
+                      className="flex items-center gap-3 px-4 py-3 rounded-lg transition-all hover:bg-cyan-500/10 text-slate-400 hover:text-cyan-300 border border-transparent hover:border-cyan-500/20 group"
+                    >
+                      <Icon size={20} className="flex-shrink-0" />
+                      <span className="text-sm font-medium flex-1">{label}</span>
+                    </Link>
+                  ))}
                 </div>
               </div>
             ))}
