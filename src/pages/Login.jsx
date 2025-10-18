@@ -30,6 +30,7 @@ export default function Login() {
         return
       }
 
+      localStorage.setItem('userAddress', address);
       navigate('/dashboard');
 
     } catch (error) {
@@ -46,10 +47,10 @@ export default function Login() {
 
     if (userId.trim()) {
       const response = await getUserDetails(userId);
-      console.log(response)
+      console.log(response?.UserAddress)
 
       if (response) {
-        localStorage.setItem("userAddress", response)
+        localStorage.setItem("userAddress", response?.UserAddress.trim())
         navigate('/dashboard');
       }
       else {

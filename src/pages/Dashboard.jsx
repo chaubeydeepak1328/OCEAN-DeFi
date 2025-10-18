@@ -1,9 +1,12 @@
+// src/screens/Dashboard.jsx
+import { useEffect, useMemo, useState } from 'react';
 import { TrendingUp, Wallet, Users, Award, DollarSign, Clock, Zap, Gift, Trophy, ArrowUpRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getMockPortfolioDetails, getMockUserStatus, formatUSD, formatRAMA } from '../utils/contractData';
 import NumberPopup from '../components/NumberPopup';
 import LivePriceFeed from '../components/LivePriceFeed';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useStore } from '../../store/useUserInfoStore';
 
 const quickEarningsData = [
   { day: 'Mon', amount: 18 },
@@ -19,10 +22,78 @@ export default function Dashboard() {
   const portfolio = getMockPortfolioDetails();
   const userStatus = getMockUserStatus();
 
-  const portfolioCapProgress = (parseFloat(portfolio.totalEarnedUSD) / parseFloat(portfolio.maxCapUSD)) * 100;
-  const dailyRate = portfolio.isBooster
-    ? (parseFloat(portfolio.stakedUSD) >= 5010e8 ? 0.80 : 0.66)
-    : (parseFloat(portfolio.stakedUSD) >= 5010e8 ? 0.40 : 0.33);
+  const [portfolioIds, setPortFolioId] = useState([])
+  const [selectedPid, setSelectedPid] = useState(1);
+  const [portFolioDetails, setFortFolioDetails] = useState();
+
+
+  const getTOtalPortFolio = useStore((s) => s.getTOtalPortFolio);
+  const getPortFoliById = useStore((s) => s.getPortFoliById);
+  const userAddress = localStorage.getItem("userAddress") || null;
+
+  const fetchPortFolio = async () => {
+    try {
+      console.log(userAddress)
+      const res = await getTOtalPortFolio(userAddress);
+      console.log(res)
+      setPortFolioId(res?.ArrPortfolio?.map(Number) || [])
+      setFortFolioDetails(res?.ProtFolioDetail)
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
+  useEffect(() => {
+    fetchPortFolio()
+  }, [])
+
+
+
+
+  const GetPortFolioById = async () => {
+    try {
+      const res = await getPortFoliById(selectedPid);
+      console.log(res)
+      setFortFolioDetails(res)
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
+  useEffect(() => {
+    if (selectedPid !== 1 && selectedPid) {
+      GetPortFolioById()
+    }
+  }, [selectedPid])
+
+  // --- Portfolio ID Select (array of numeric IDs) -----------------------------
+
+
+
+
+
+  useEffect(() => {
+    // if IDs change and current selection is missing, reset to first
+    if (portfolioIds.length && !portfolioIds.includes(Number(selectedPid))) {
+      setSelectedPid(portfolioIds[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [portfolioIds.join(',')]); // join to keep dep simple
+
+  useEffect(() => {
+    if (selectedPid !== '' && Number.isFinite(Number(selectedPid))) {
+      localStorage.setItem('selectedPortfolioId', String(selectedPid));
+    }
+  }, [selectedPid]);
+
+  // ---------------------------------------------------------------------------
+
+  const captPct = parseFloat(portFolioDetails?.capPct);
+  const principalUSD = parseFloat(portFolioDetails?.principalUSD) / 1e6;
+  const totalEarning = principalUSD * captPct / 1e2;
+  const progress = (principalUSD / (principalUSD * (captPct / 1e2))) * 100;
+
+  console.log(principalUSD, totalEarning, captPct, progress)
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -120,37 +191,73 @@ export default function Dashboard() {
             <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
               <h2 className="text-base sm:text-lg font-semibold text-cyan-300 uppercase tracking-wide">Active Portfolio Status</h2>
-              {portfolio.isBooster && (
+              {portFolioDetails?.booster && (
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-neon-orange to-neon-pink text-white rounded-lg text-xs sm:text-sm font-bold flex-shrink-0 w-fit shadow-lg animate-glow-pulse border border-neon-orange/50">
                   <Zap size={14} className="animate-pulse" />
                   <span className="uppercase">Booster Active</span>
                 </div>
               )}
+
+              {/* Portfolio ID Select */}
+              <div className="w-full sm:w-auto">
+                <label className="block text-xs font-semibold text-cyan-400 uppercase tracking-wider mb-1">
+                  Portfolio ID
+                </label>
+                <div className="relative">
+                  <select
+                    value={selectedPid}
+                    onChange={(e) => setSelectedPid(Number(e.target.value))}
+                    className="
+                      peer w-full sm:w-56 appearance-none pr-10 pl-3 py-2 rounded-lg
+                      bg-dark-900/60 text-cyan-200 border border-cyan-500/30
+                      focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400
+                      transition-all cyber-glass
+                    "
+                  >
+                    {portfolioIds.length === 0 && <option value="">No portfolios</option>}
+                    {portfolioIds.map((pid) => (
+                      <option key={pid} value={pid}>
+                        {pid}
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* Chevron */}
+                  <svg
+                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 opacity-70"
+                    width="18" height="18" viewBox="0 0 24 24" fill="none"
+                  >
+                    <path d="M7 10l5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+
+
+              </div>
             </div>
 
             <div className="space-y-4">
               <div>
                 <div className="flex justify-between items-center mb-2 gap-2">
                   <span className="text-xs sm:text-sm font-medium text-cyan-400 uppercase tracking-wider">Portfolio Cap Progress</span>
-                  <span className="text-xs sm:text-sm font-bold text-neon-green">{portfolioCapProgress.toFixed(1)}%</span>
+                  <span className="text-xs sm:text-sm font-bold text-neon-green">{progress}%</span>
                 </div>
                 <div className="h-3 bg-dark-900 rounded-full overflow-hidden border border-cyan-500/30 relative">
                   <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 to-neon-green/20 animate-pulse" />
                   <div
                     className="h-full bg-gradient-to-r from-cyan-500 to-neon-green rounded-full transition-all relative z-10"
-                    style={{ width: `${Math.min(portfolioCapProgress, 100)}%` }}
+                    style={{ width: `${progress}%` }}
                   />
                 </div>
                 <p className="text-xs text-cyan-300/90 mt-1">
-                  {formatUSD(portfolio.totalEarnedUSD)} / {formatUSD(portfolio.maxCapUSD)}
-                  <span className="ml-1 text-neon-green">{portfolio.isBooster ? '(250% Cap)' : '(200% Cap)'}</span>
+                  {formatUSD(parseFloat(portFolioDetails?.principalUSD) / 1e6)} / {formatUSD((parseFloat(portFolioDetails?.principalUSD) / 1e6) * parseFloat(portFolioDetails?.capPct) / 1e2)}
+                  <span className="ml-1 text-neon-green">{portFolioDetails?.booster ? '(250% Cap)' : '(200% Cap)'}</span>
                 </p>
               </div>
 
               <div className="grid grid-cols-3 gap-2 sm:gap-4">
                 <div className="p-3 sm:p-4 cyber-glass rounded-xl border border-cyan-500/30 hover:border-cyan-500/80 transition-all group">
                   <p className="text-xs text-cyan-400 font-medium mb-1 uppercase tracking-wider">Daily Rate</p>
-                  <p className="text-lg sm:text-xl font-bold text-cyan-300 group-hover:text-neon-glow transition-all">{dailyRate}%</p>
+                  <p className="text-lg sm:text-xl font-bold text-cyan-300 group-hover:text-neon-glow transition-all">{(parseFloat(portFolioDetails?.dailyRateWad) / 1e18) * 100}%</p>
                 </div>
                 <div className="p-3 sm:p-4 cyber-glass rounded-xl border border-neon-green/30 hover:border-neon-green/80 transition-all group">
                   <p className="text-xs text-neon-green font-medium mb-1 uppercase tracking-wider">Direct Refs</p>

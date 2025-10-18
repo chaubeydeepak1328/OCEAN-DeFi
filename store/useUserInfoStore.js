@@ -1,7 +1,9 @@
 import { create } from "zustand";
 import Web3, { errors } from "web3";
 import Swal from "sweetalert2";
-import UserRegistryABI from './Contract_ABI/UserRegistry.json'
+import UserRegistryABI from './Contract_ABI/UserRegistry.json';
+import PortFolioManagerABI from './Contract_ABI/PortFolioManager.json'
+import OceanQueryUpgradeableABI from './Contract_ABI/OceanQueryUpgradeableABI.json'
 
 
 
@@ -18,19 +20,22 @@ const Contract = {
   AdminControl: "0xcD8eB92E927Aa9C0DC5e58d8383D4aE211F73f96",
   MainWallet: "0x61d66989f2fA03818Fcf2f4dCb586C17D4fa9c47",
   SafeWallet: "0x6a4a05431A5826fa35A2e9535Da662f47189232f",
-  OceanViewUpgradeable:"0x449E6d26f1a65E991e129f5320d65a62C896aA8a",
-  OceanQueryUpgradeable:"0x4A3f63Cc3B20dB20E8dCd42daAd1846374B10cCa",
+  OceanViewUpgradeable: "0x449E6d26f1a65E991e129f5320d65a62C896aA8a",
+  OceanQueryUpgradeable: "0x4A3f63Cc3B20dB20E8dCd42daAd1846374B10cCa",
 };
 
 const INFURA_URL = "https://blockchain.ramestta.com";
 const web3 = new Web3(INFURA_URL);
 
 
-const DEFAULT_DATA = {
-  address: "",
-  userId: "",
-  registrationTime: "",
-  sponsor: "",
+const readLocalJSON = (key) => {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
 };
 
 
@@ -55,13 +60,9 @@ export const useStore = create((set, get) => ({
   MainWalletAddress: Contract["MainWallet"],
   SafeWalletAddress: Contract["SafeWallet"],
 
-  data: { ...DEFAULT_DATA },
-  lastFetchedAt: null,
-  _reqId: 0,
+  // Session
+  userAddress: readLocalJSON('userAddress'),
 
-
-  setField: (patch) => set((s) => ({ data: { ...s.data, ...patch } })),
-  merge: (patch = {}) => set((s) => ({ ...s, ...patch })),
 
   userIdByAdd: async (userAddress) => {
     try {
@@ -198,7 +199,7 @@ export const useStore = create((set, get) => ({
 
       localStorage.setItem("userAddress", UserAddress)
 
-      return response
+      return {response,UserAddress}
     } catch (error) {
       console.error('User id/Address error:', error);
       Swal.fire({ icon: 'error', title: 'id/Address  error', text: error?.message || 'Unknown error' });
@@ -225,8 +226,57 @@ export const useStore = create((set, get) => ({
     }
   },
 
+  // =====================================================================
+  // Dashboard 
+  // =====================================================================
 
-  
+  getTOtalPortFolio: async (userAddress) => {
+    try {
+      if (!userAddress) {
+        return;
+      }
+      
+
+      const contract = new web3.eth.Contract(PortFolioManagerABI, Contract["PortFolioManager"]);
+      const contract1 = new web3.eth.Contract(OceanQueryUpgradeableABI, Contract["OceanQueryUpgradeable"]);
+
+
+      const ArrPortfolio = await contract.methods.portfoliosOf(userAddress).call();
+
+      let ProtFolioDetail;
+      if (ArrPortfolio.length > 0) {
+        ProtFolioDetail = await contract1.methods.getPortfolioDetails(ArrPortfolio[0]).call();
+      }
+
+      
+      return { ArrPortfolio, ProtFolioDetail }
+
+    } catch (error) {
+      console.error('Portfolio error:', error);
+      Swal.fire({ icon: 'error', title: 'Portfolio error', text: error?.message || 'Unknown error' });
+      throw error;
+    }
+  },
+
+
+  getPortFoliById: async (portId) => {
+    console.log(portId)
+    try {
+      if (!portId) {
+        return;
+      }
+      const contract = new web3.eth.Contract(OceanQueryUpgradeableABI, Contract["OceanQueryUpgradeable"]);
+      const ArrPortfolio = await contract.methods.getPortfolioDetails(portId).call();
+
+      return ArrPortfolio
+    } catch (error) {
+      console.error('Portfolio error:', error);
+      Swal.fire({ icon: 'error', title: 'Portfolio error', text: error?.message || 'Unknown error' });
+      throw error;
+    }
+  }
+
+
 
 
 }));
