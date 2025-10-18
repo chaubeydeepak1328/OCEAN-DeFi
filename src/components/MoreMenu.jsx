@@ -1,6 +1,7 @@
 import { X, Users, Award, Trophy, Gift, Vault, History, TrendingUp, Info, Settings, FileDown, LogOut, Presentation, BookOpen } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { generateOceanDefiPDF } from '../utils/generatePDF';
+import { useDisconnect } from 'wagmi';
 
 const menuSections = [
   {
@@ -33,7 +34,10 @@ const menuSections = [
 export default function MoreMenu({ isOpen, onClose }) {
   const navigate = useNavigate();
 
-  const handleDisconnect = () => {
+  const { disconnect } = useDisconnect()
+
+  const handleDisconnect = async() => {
+    await disconnect()
     localStorage.removeItem('currentUser');
     localStorage.removeItem('isAuthenticated');
     navigate('/login');

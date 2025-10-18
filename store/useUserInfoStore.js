@@ -25,25 +25,13 @@ const web3 = new Web3(INFURA_URL);
 
 
 const DEFAULT_DATA = {
-  balance: "",
   address: "",
   userId: "",
-  isRegistered: false,
   registrationTime: "",
   sponsor: "",
-  totalEarningsUSD: 0.00,
-  totalEarningsRAMA: 0.00,
-  repurchaseCount: 0,
-  currentOrbitX: 0,
-  orbitCount: 0,
-  totalUsers: 0
 };
 
 
-const DEFAULT_ACtiv = {
-  requiredRama: '',
-  requiredUSD: ''
-}
 
 
 
@@ -66,9 +54,8 @@ export const useStore = create((set, get) => ({
   SafeWalletAddress: Contract["SafeWallet"],
 
   data: { ...DEFAULT_DATA },
-  requiredAct: { ...DEFAULT_ACtiv },
   lastFetchedAt: null,
-  _reqId: 0, 
+  _reqId: 0,
 
 
   setField: (patch) => set((s) => ({ data: { ...s.data, ...patch } })),
@@ -89,7 +76,7 @@ export const useStore = create((set, get) => ({
     }
   },
 
- 
+
 
   RegisterUser: async (userAddress, value) => {
     console.log('RegisterUser args:', userAddress, value);
@@ -120,33 +107,37 @@ export const useStore = create((set, get) => ({
 
       const data = contract.methods.registerUser(sponsorAddress).encodeABI();
 
-      // --- Gas
-      const gasPrice = await web3.eth.getGasPrice(); // string wei
-      let gasLimit;
+      // --- Gas price
+      const gasPrice = await web3.eth.getGasPrice(); // string in wei
 
+      // --- IMPORTANT: do NOT send any value; fn is nonpayable
+      let gasLimit;
       try {
         gasLimit = await web3.eth.estimateGas({
           from: userAddress,
-          to: Contract['BIGBANG_CONTRACT'],
-          value: gasPrice,
-          data,
+          to: Contract['UserRegistry'],
+          data,                  // no "value" here
         });
       } catch (err) {
         console.error('Gas estimation failed:', err);
-        Swal.fire({ icon: 'error', title: 'Gas estimation failed', text: 'Check contract & inputs.' });
+        Swal.fire({ icon: 'error', title: 'Gas estimation failed', text: err?.message || 'Check contract & inputs.' });
         throw err;
       }
 
       const toHex = web3.utils.toHex;
       const tx = {
         from: userAddress,
-        to: Contract['BIGBANG_CONTRACT'],
+        to: Contract['UserRegistry'],
         data,
-        value: toHex(gasPrice),
+        // value omitted (or explicitly zero)
+        // value: '0x0',
         gas: toHex(gasLimit),
         gasPrice: toHex(gasPrice),
+        // optional: include chainId if your wallet needs it for signing
+        // chainId: <Rama chain id here>
       };
 
+      // Return tx for the wallet to sign/send (WalletConnect, MetaMask, etc.)
       return tx;
     } catch (error) {
       console.error('RegisterUser error:', error);
@@ -154,6 +145,7 @@ export const useStore = create((set, get) => ({
       throw error;
     }
   },
+
 
 
 
@@ -176,99 +168,43 @@ export const useStore = create((set, get) => ({
   },
 
 
-  // getUserDetails: async (userAddress) => {
-  //   // bump a request id to ignore stale results in the store update
-  //   const reqId = (get()._reqId || 0) + 1;
-  //   set({ _reqId: reqId });
+  getUserDetails: async (Value) => {
+    try {
+      const contract = new web3.eth.Contract(UserRegistryABI, Contract['UserRegistry']);
 
-  //   try {
-  //     if (!userAddress || typeof userAddress !== 'string' || !userAddress.startsWith('0x')) {
-  //       throw new Error('Invalid userAddress');
-  //     }
+      console.log(Value)
 
-  //     const contract = new web3.eth.Contract(BigBang_ABI, Contract['BIGBANG_CONTRACT']);
+      // --- Resolve sponsor: address or numeric ID
+      let UserAddress;
+      if (typeof Value === 'string' && Value.startsWith('0x')) {
+        UserAddress = Value;
+      } else {
+        const userId = typeof Value === 'number' ? Value : Number(Value);
+        if (!Number.isFinite(userId) || userId <= 0) throw new Error('Invalid user id');
+        UserAddress = await contract.methods.idToAddress(userId).call();
+      }
 
-  //     // Always get balance
-  //     const balanceWei = await web3.eth.getBalance(userAddress);
-  //     const balanceEth = web3.utils.fromWei(balanceWei, 'ether');
+      if (!UserAddress || !UserAddress.startsWith('0x')) {
+        throw new Error('Resolved address is invalid');
+      }
+      const ZERO = '0x0000000000000000000000000000000000000000';
+      if (UserAddress.toLowerCase() === ZERO.toLowerCase()) {
+        throw new Error('User Address not found (zero address)');
+      }
 
-  //     // Quick membership check first (saves RPCs if false)
-  //     const isRegistered = await contract.methods.isRegistered(userAddress).call();
 
-  //     // If NOT registered, return a minimal, stable shape and (optionally) update store
-  //     if (!isRegistered) {
-  //       const result = {
-  //         balance: Number(balanceEth).toFixed(4),
-  //         address: userAddress,
-  //         userId: 0,
-  //         isRegistered: false,
-  //         registrationTime: null,
-  //         sponsor: null,
-  //         totalEarningsUSD: 0,
-  //         totalEarningsRAMA: 0,
-  //         repurchaseCount: 0,
-  //         currentOrbitX: 0,
-  //         orbitCount: 0,
-  //         totalUsers: 0,
-  //       };
+      console.log(UserAddress);
+      const response = await contract.methods.getUser(UserAddress).call()
 
-  //       if (get()._reqId === reqId) {
-  //         set({ data: result, lastFetchedAt: new Date().toISOString() });
-  //       }
-  //       return result;
-  //     }
+      localStorage.setItem("userAddress", UserAddress)
 
-  //     // Registered: fetch details in parallel
-  //     const [
-  //       userId,
-  //       regTime,
-  //       upline,
-  //       ramaEarnedUSD,
-  //       currentOrbitX,
-  //       orbitCount,
-  //       repurchaseCount,
-  //     ] = await Promise.all([
-  //       contract.methods.getUserId(userAddress).call(),
-  //       contract.methods.registrationTime(userAddress).call(),
-  //       contract.methods.upline(userAddress).call(),
-  //       contract.methods.getTotalEarnings(userAddress).call(),
-  //       contract.methods.getCurrentOrbitX(userAddress).call(),
-  //       contract.methods.getOrbitCount(userAddress).call(),
-  //       contract.methods.getRepurchaseCount(userAddress).call(),
-  //     ]);
-
-  //     // regTime from many contracts is in SECONDS — convert to ms if your formatDate expects ms
-  //     const regTimeMs = Number(regTime) < 1e12 ? Number(regTime) * 1000 : Number(regTime);
-
-  //     const userData = {
-  //       balance: Number(balanceEth).toFixed(4),
-  //       address: userAddress,
-  //       userId: Number(userId),
-  //       isRegistered: true,
-  //       registrationTime: formatDate(regTimeMs),
-  //       sponsor: upline,
-  //       // adjust divisor to your contract's decimals
-  //       totalEarningsUSD: Number(ramaEarnedUSD) / 1e6,
-  //       totalEarningsRAMA: 0.0,
-  //       repurchaseCount: Number(repurchaseCount),
-  //       currentOrbitX: Number(currentOrbitX),
-  //       orbitCount: Number(orbitCount),
-  //       totalUsers: 0.0,
-  //     };
-
-  //     if (get()._reqId === reqId) {
-  //       set({ data: userData, lastFetchedAt: new Date().toISOString() });
-  //     }
-
-  //     return userData;
-  //   } catch (error) {
-  //     // DO NOT return false — bubble the error so callers can handle it
-  //     if (get()._reqId === reqId) {
-  //       console.error('getUserDetails error:', error);
-  //     }
-  //     throw error;
-  //   }
-  // },
+      return response
+    } catch (error) {
+      console.error('User id/Address error:', error);
+      Swal.fire({ icon: 'error', title: 'id/Address  error', text: error?.message || 'Unknown error' });
+      throw error;
+    }
+  },
 
 
   isUserRegisterd: async (userAddress) => {
@@ -288,9 +224,6 @@ export const useStore = create((set, get) => ({
       throw error;
     }
   },
-
- 
-
 
 
 }));

@@ -1,7 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Wallet, User, Mail, Hash, ArrowRight, Check, AlertCircle, Wallet2 } from 'lucide-react';
 import { useAppKitAccount } from '@reown/appkit/react';
+import { useStore } from '../../store/useUserInfoStore';
+import Swal from 'sweetalert2';
+import { useTransaction } from "../../config/register";
+import { useWaitForTransactionReceipt } from "wagmi";
 // import { mockConnectWallet, registerUser } from '../utils/walletAuth';
 
 export default function Signup() {
@@ -9,13 +13,86 @@ export default function Signup() {
   const location = useLocation();
   const walletFromState = location.state?.walletAddress || '';
 
-  const [UserValue,setUserValue] = useState();
-
+  const [UserValue, setUserValue] = useState();
   const { address, isConnected } = useAppKitAccount();
-
-
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [trxData, setTrxData] = useState();
+  const [trxHash, setTrxHash] = useState();
+  const RegisterUser = useStore((s) => s.RegisterUser);
+  const isUserRegisterd = useStore((s) => s.isUserRegisterd); // <-- add
+
+
+
+
+  // =====================================================================
+  //  For making transaction
+  // =====================================================================
+  const { handleSendTx, hash } = useTransaction(trxData !== null && trxData);
+  useEffect(() => {
+    if (trxData) {
+      try {
+        handleSendTx(trxData);
+      } catch (error) {
+        alert("somthing went Wrong");
+      }
+    }
+  }, [trxData]);
+
+  useEffect(() => {
+    if (hash) {
+      setTrxHash(hash)
+    }
+  }, [hash]);
+
+
+
+
+
+  const { data: receipt, isLoading: progress, isSuccess, isError } =
+    useWaitForTransactionReceipt({
+      hash,
+      confirmations: 1,
+    });
+
+
+  useEffect(() => {
+    if (isSuccess && receipt?.status === "success") {
+      const txUrl = `https://ramascan.com/tx/${receipt?.transactionHash}`;
+      const addrUrl = `https://ramascan.com/address/${address}`;
+
+      localStorage.setItem("userAddress", address)
+
+      Swal.fire({
+        icon: "success",
+        title: "Registration Successful",
+        html: `
+        <div style="text-align:left">
+          <p style="margin:0 0 8px 0">Your registration has been confirmed on-chain.</p>
+          <p style="margin:0 0 8px 0">Redirecting to dashboard...</p>
+          <p style="margin:0 0 6px 0">
+            <a href="${txUrl}" target="_blank" rel="noopener">View Transaction</a>
+          </p>
+          <p style="margin:0">
+            <a href="${addrUrl}" target="_blank" rel="noopener">View Address on Ramascan</a>
+          </p>
+        </div>
+      `,
+        showConfirmButton: false,
+        timer: 5000,         // ✅ Auto-close after 2.5 sec
+        willClose: () => {
+          navigate('/dashboard');   // ✅ Auto-redirect after successful registration
+        }
+      });
+    }
+    else if (isError || receipt?.status === "reverted") {
+      Swal.fire({
+        icon: "error",
+        title: "Transaction Failed",
+        text: "Your transaction failed or was reverted."
+      });
+    }
+  }, [isSuccess, isError, receipt, address]);
 
 
 
@@ -25,21 +102,28 @@ export default function Signup() {
     setError('');
 
     try {
-      // const result = await registerUser({
-      //   user_id: formData.userId,
-      //   wallet_address: formData.walletAddress,
-      //   name: formData.name,
-      //   email: formData.email,
-      // });
 
-      const result = ""
-
-      if (result.success && result.user) {
-        localStorage.setItem('currentUser', JSON.stringify(result.user));
-        navigate('/');
-      } else {
-        setError(result.error || 'Registration failed. Please try again.');
+      // 1) Check if address is already registered
+      const already = await isUserRegisterd(address);
+      if (already) {
+        navigate("/dashboard")
+        setIsSubmitting(false);
+        return; // stop here, do not build tx
       }
+      const response = await RegisterUser(address, UserValue);
+
+      if (response) {
+        setTrxData(response); // ✅ this triggers the useEffect
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Transaction Error",
+          text: "Unable to build registration transaction." + trxHash,
+          confirmButtonText: "OK",
+        });
+      }
+
+      setIsSubmitting(false)
     } catch (error) {
       console.error('Registration failed:', error);
       setError('An unexpected error occurred. Please try again.');
@@ -48,7 +132,18 @@ export default function Signup() {
     }
   };
 
-  
+
+
+  const CheckUserStatus = async () => {
+    if (!isConnected && !address) {
+      navigate("/login")
+    }
+  }
+  useEffect(() => {
+    CheckUserStatus()
+  }, [isConnected,address])
+
+
 
   return (
     <div className="min-h-screen bg-dark-950 cyber-grid-bg relative flex items-center justify-center p-4 overflow-hidden">
@@ -86,7 +181,7 @@ export default function Signup() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-neon-green font-medium mb-1 uppercase tracking-wide">Wallet Connected</p>
-                <p className="text-sm text-cyan-300 font-mono truncate">{address}</p>
+                <p className="text-sm text-cyan-300 font-mono truncate">{address?.slice(0, 8) + "..." + address?.slice(-7)}</p>
               </div>
             </div>
 
@@ -100,7 +195,7 @@ export default function Signup() {
                   type="text"
                   name="userId"
                   value={UserValue}
-                  onChange={setUserValue}
+                  onChange={(e) => setUserValue(e.target.value)}
                   placeholder="Enter the Sponser Id/Address"
                   required
                   className="w-full pl-10 pr-4 py-3 bg-dark-900/50 border border-cyan-500/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-cyan-300 placeholder-cyan-400/30 transition-all"

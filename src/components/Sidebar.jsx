@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Wallet, TrendingUp, Users, Award, Trophy, Gift, Vault, History, Info, Settings, FileDown, LogOut, Presentation, BookOpen, Waves } from 'lucide-react';
 import { generateOceanDefiPDF } from '../utils/generatePDF';
+import { useDisconnect } from 'wagmi';
 
 const mainNavItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -41,6 +42,9 @@ export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
 
+    const { disconnect } = useDisconnect()
+
+
   const isActive = (path) => {
     if (path === '/dashboard') {
       return location.pathname === '/dashboard';
@@ -48,7 +52,8 @@ export default function Sidebar() {
     return location.pathname === path;
   };
 
-  const handleDisconnect = () => {
+  const handleDisconnect = async() => {
+    await disconnect();
     localStorage.removeItem('currentUser');
     localStorage.removeItem('isAuthenticated');
     navigate('/login');

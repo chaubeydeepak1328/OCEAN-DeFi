@@ -15,6 +15,8 @@ export default function Login() {
   const { address, isConnected } = useAppKitAccount();
   const { open } = useAppKit();
 
+
+  const getUserDetails = useStore((s) => s.getUserDetails);
   const isUserRegisterd = useStore((s) => s.isUserRegisterd);
 
   const handleConnectWallet = async () => {
@@ -43,39 +45,25 @@ export default function Login() {
     setError('');
 
     if (userId.trim()) {
-      // For demo purposes, accept ID "1" to redirect to dashboard
-      if (userId.trim() === '1') {
-        const demoUser = {
-          id: '1',
-          walletAddress: '0xDemo...Address',
-          upline: null,
-          joinedAt: new Date().toISOString()
-        };
-        localStorage.setItem('currentUser', JSON.stringify(demoUser));
-        localStorage.setItem('isAuthenticated', 'true');
+      const response = await getUserDetails(userId);
+      console.log(response)
+
+      if (response) {
+        localStorage.setItem("userAddress", response)
         navigate('/dashboard');
-        return;
       }
-
-      // const user = await getUserById(userId.trim());
-      const user = ""
-
-      if (user) {
-        localStorage.setItem('currentUser', JSON.stringify(user));
-        localStorage.setItem('isAuthenticated', 'true');
-        navigate('/dashboard', { state: { userId: userId.trim() } });
-      } else {
+      else {
         setError('User ID not found. Please check and try again.');
       }
     }
   };
 
 
-  useEffect(()=>{
-   if(isConnected&&address){
-     handleConnectWallet(); 
-   }
-  },[isConnected,address])
+  useEffect(() => {
+    if (isConnected && address) {
+      handleConnectWallet();
+    }
+  }, [isConnected, address])
 
   return (
     <div className="min-h-screen bg-dark-950 cyber-grid-bg relative flex items-center justify-center p-4 sm:p-6 overflow-hidden">
@@ -110,7 +98,7 @@ export default function Login() {
           <button
             onClick={async () => {
               if (!isConnected) {
-                await open();         
+                await open();
               } else {
                 await handleConnectWallet(); // already connected -> proceed
               }
