@@ -1,25 +1,36 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Wallet, User, Mail, Hash, ArrowRight, Check, AlertCircle, Wallet2 } from 'lucide-react';
+import { Wallet, User, Mail, Hash, ArrowRight, Check, AlertCircle, Wallet2, RefreshCcw } from 'lucide-react';
 import { useAppKitAccount } from '@reown/appkit/react';
 import { useStore } from '../../store/useUserInfoStore';
 import Swal from 'sweetalert2';
 import { useTransaction } from "../../config/register";
-import { useWaitForTransactionReceipt } from "wagmi";
+import { useDisconnect, useWaitForTransactionReceipt } from "wagmi";
 // import { mockConnectWallet, registerUser } from '../utils/walletAuth';
 
 export default function Signup() {
   const navigate = useNavigate();
   const location = useLocation();
-  const walletFromState = location.state?.walletAddress || '';
 
+  const { disconnect, disconnectAsync } = useDisconnect();
+
+
+  const [refreshing, setRefreshing] = useState(false);
+  const [justUpdated, setJustUpdated] = useState(false);
+
+
+  const [portFolioAmt, setPortFolioAmt] = useState();
   const [UserValue, setUserValue] = useState();
   const { address, isConnected } = useAppKitAccount();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [trxData, setTrxData] = useState();
   const [trxHash, setTrxHash] = useState();
-  const RegisterUser = useStore((s) => s.RegisterUser);
+
+
+
+  const regPortFoliAmt = useStore((s) => s.regPortFoliAmt);
+  const CreateportFolio = useStore((s) => s.CreateportFolio);
   const isUserRegisterd = useStore((s) => s.isUserRegisterd); // <-- add
 
 
@@ -110,7 +121,7 @@ export default function Signup() {
         setIsSubmitting(false);
         return; // stop here, do not build tx
       }
-      const response = await RegisterUser(address, UserValue);
+      const response = await CreateportFolio(address, UserValue);
 
       if (response) {
         setTrxData(response); // ✅ this triggers the useEffect
@@ -141,8 +152,71 @@ export default function Signup() {
   }
   useEffect(() => {
     CheckUserStatus()
-  }, [isConnected,address])
+  }, [isConnected, address])
 
+
+
+
+
+  // fetch registration Amt to register and activate portfolio of 10$
+
+  const fetchPayableAmt = async () => {
+    try {
+      const res = await regPortFoliAmt();
+      console.log(res)
+      setPortFolioAmt(res)
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
+  useEffect(() => {
+    fetchPayableAmt()
+  }, [])
+
+
+
+
+  const handleRefresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    setJustUpdated(false);
+    try {
+      await fetchPayableAmt();               // your async fetch
+      setJustUpdated(true);                  // show "Updated" briefly
+      setTimeout(() => setJustUpdated(false), 1200);
+    } catch (e) {
+      // optional: toast error
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+
+
+  const handleDisconnect = async () => {
+    try {
+      // 1) Disconnect via wagmi
+      if (disconnectAsync) await disconnectAsync();
+      else if (disconnect) await Promise.resolve(disconnect());
+
+      // 2) Also tear down provider sessions (WalletConnect/injected)
+      try {
+        const provider = await connector?.getProvider?.();
+        if (provider?.disconnect) await provider.disconnect();   // EIP-1193
+        if (provider?.wc?.destroy) await provider.wc.destroy();  // WC v2
+        if (provider?.close) await provider.close();             // some injected
+      } catch { }
+
+      // 3) Clear caches + your own auth marker
+      nukeWalletCaches();
+      try { localStorage.removeItem('userAddress'); } catch { }
+    } finally {
+      // Important: avoid navigate()/onClose() churn.
+      // Do a hard replace so AuthGate catches you at /login without flicker.
+      window.location.replace('/login');
+    }
+  };
 
 
   return (
@@ -183,7 +257,105 @@ export default function Signup() {
                 <p className="text-xs text-neon-green font-medium mb-1 uppercase tracking-wide">Wallet Connected</p>
                 <p className="text-sm text-cyan-300 font-mono truncate">{address?.slice(0, 8) + "..." + address?.slice(-7)}</p>
               </div>
+
+              <button onClick={()=>handleDisconnect()} className="flex-1 min-w-0 bg-red-500 rounded-xl">
+                <p className='text-white py-2'>Disconnect</p>
+              </button>
             </div>
+
+
+
+            {/* Portfolio Quote Card */}
+            <div className="rounded-2xl bg-slate-900/60 border border-cyan-500/30 p-5 shadow-lg backdrop-blur">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-cyan-500 to-emerald-400 grid place-items-center">
+                    <svg className="h-5 w-5 text-slate-900" viewBox="0 0 24 24" fill="currentColor"><path d="M3 7a2 2 0 0 1 2-2h6.5a2 2 0 0 1 1.6.8l1.9 2.4H19a2 2 0 0 1 2 2v6.5A2.5 2.5 0 0 1 18.5 19H5.5A2.5 2.5 0 0 1 3 16.5V7z" /></svg>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wider text-cyan-300/70">Portfolio</p>
+                    <h3 className="text-lg font-semibold text-cyan-200">Activation Quote</h3>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleRefresh}
+                  disabled={refreshing}
+                  aria-busy={refreshing}
+                  className={`px-3 py-2 text-xs font-semibold rounded-lg border transition-colors
+        ${refreshing
+                      ? "border-cyan-500/60 text-cyan-200 bg-cyan-500/10 cursor-wait"
+                      : "border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/10"}`}
+                >
+                  <span className="flex items-center gap-2">
+                    {/* icon slot */}
+                    {refreshing ? (
+                      <RefreshCcw className="h-4 w-4 animate-spin" />
+                    ) : justUpdated ? (
+                      <Check className="h-4 w-4 text-emerald-400" />
+                    ) : (
+                      <RefreshCcw className="h-4 w-4" />
+                    )}
+
+                    {/* label slot */}
+                    <span>
+                      {refreshing ? "Refreshing..." : justUpdated ? "Updated" : "Refresh"}
+                    </span>
+                  </span>
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* USD */}
+                <div className="rounded-xl bg-slate-900/70 border border-cyan-500/20 p-4">
+                  <p className="text-xs uppercase tracking-wide text-cyan-300/70 mb-1">Amount (USD)</p>
+                  {portFolioAmt?.portFolioAmtUsd != null ? (
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-2xl font-bold text-emerald-300">
+                        ${Number(portFolioAmt.portFolioAmtUsd).toFixed(2)}
+                      </span>
+                      <span className="text-[11px] text-cyan-300/60">fixed</span>
+                    </div>
+                  ) : (
+                    <div className="h-7 w-28 rounded bg-cyan-500/20 animate-pulse" />
+                  )}
+                </div>
+
+                {/* RAMA */}
+                <div className="rounded-xl bg-slate-900/70 border border-cyan-500/20 p-4">
+                  <p className="text-xs uppercase tracking-wide text-cyan-300/70 mb-1">Payable (RAMA)</p>
+                  {portFolioAmt?.ramaAmt ? (
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-2xl font-bold text-cyan-200">
+                        {portFolioAmt.ramaAmt} <span className="text-base font-medium opacity-80">RAMA</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await navigator.clipboard.writeText(`${portFolioAmt.ramaAmt} RAMA`);
+                          } catch { }
+                        }}
+                        className="px-2 py-1 text-xs rounded border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/10 transition"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="h-7 w-40 rounded bg-cyan-500/20 animate-pulse" />
+                  )}
+                </div>
+              </div>
+
+              {/* Footnote */}
+              <div className="mt-4 text-xs text-cyan-300/70">
+                Prices refresh with the latest oracle feed. Click <span className="text-cyan-200 font-semibold">Refresh</span> before paying.
+              </div>
+            </div>
+
 
             <div>
               <label className="block text-sm font-medium text-cyan-400 mb-2 uppercase tracking-wide">

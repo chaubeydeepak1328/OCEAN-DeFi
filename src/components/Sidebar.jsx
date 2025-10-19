@@ -2,7 +2,8 @@
 import { Link, NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Wallet, TrendingUp, Users, Award, Trophy, Gift, Vault,
-  History, Info, Settings, FileDown, LogOut, Presentation, BookOpen, Waves
+  History, Info, Settings, FileDown, LogOut, Presentation, BookOpen, Waves,
+  Coins
 } from 'lucide-react';
 import { generateOceanDefiPDF } from '../utils/generatePDF';
 import { useAccount, useDisconnect } from 'wagmi';
@@ -19,6 +20,7 @@ const menuSections = [
     title: 'Income & Rewards',
     items: [
       { path: '/dashboard/slab', label: 'Slab Income', icon: Award },
+      { path: '/dashboard/spot-income', label: 'Spot Income', icon: Coins },
       { path: '/dashboard/royalty', label: 'Royalty Program', icon: Trophy },
       { path: '/dashboard/rewards', label: 'One-Time Rewards', icon: Gift },
     ],
@@ -57,8 +59,8 @@ export default function Sidebar() {
       'WCM_VERSION',
     ];
     keys.forEach((k) => {
-      try { localStorage.removeItem(k); } catch {}
-      try { sessionStorage.removeItem(k); } catch {}
+      try { localStorage.removeItem(k); } catch { }
+      try { sessionStorage.removeItem(k); } catch { }
     });
   };
 
@@ -72,9 +74,9 @@ export default function Sidebar() {
         if (provider?.disconnect) await provider.disconnect();
         if (provider?.wc?.destroy) await provider.wc.destroy();
         if (provider?.close) await provider.close();
-      } catch {}
+      } catch { }
 
-      try { localStorage.removeItem('userAddress'); } catch {}
+      try { localStorage.removeItem('userAddress'); } catch { }
       nukeWalletCaches();
     } finally {
       // Hard reload to fully reset any in-memory state; AuthGate will send to /login
@@ -85,10 +87,9 @@ export default function Sidebar() {
   const handlePDFDownload = () => generateOceanDefiPDF();
 
   const linkClasses = ({ isActive }) =>
-    `flex items-center gap-3 px-4 py-3 rounded-lg transition-all group relative ${
-      isActive
-        ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 shadow-neon-cyan'
-        : 'text-slate-400 hover:text-cyan-300 hover:bg-cyan-500/10 border border-transparent hover:border-cyan-500/20'
+    `flex items-center gap-3 px-4 py-3 rounded-lg transition-all group relative ${isActive
+      ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 shadow-neon-cyan'
+      : 'text-slate-400 hover:text-cyan-300 hover:bg-cyan-500/10 border border-transparent hover:border-cyan-500/20'
     }`;
 
   return (

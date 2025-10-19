@@ -30,6 +30,7 @@ import ValidatorSecurity from './pages/ValidatorSecurity';
 import AboutPublic from './pages/AboutPublic';
 import Presentation from './pages/Presentation';
 import OceanDefiGuide from './pages/OceanDefiGuide';
+import SpotIncome from './pages/SpotIncome';
 
 const Approute = () => {
   return (
@@ -59,6 +60,7 @@ const Approute = () => {
           <Route path="earnings" element={<ClaimEarnings />} />
           <Route path="team" element={<TeamNetwork />} />
           <Route path="slab" element={<SlabIncome />} />
+          <Route path="spot-income" element={<SpotIncome />} />
           <Route path="royalty" element={<RoyaltyProgram />} />
           <Route path="rewards" element={<OneTimeRewards />} />
           <Route path="safe-wallet" element={<SafeWallet />} />

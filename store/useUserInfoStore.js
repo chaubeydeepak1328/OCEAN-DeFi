@@ -297,7 +297,7 @@ export const useStore = create((set, get) => ({
       );
 
       // Fire all calls at once
-      const [accuredGrowth,safeWalletBalanceRaw, slabPanelRaw] = await Promise.all([
+      const [accuredGrowth, safeWalletBalanceRaw, slabPanelRaw] = await Promise.all([
 
         oceanQuery.methods.getAccruedGrowth(userAddress).call({ from: userAddress }),
         oceanQuery.methods.getSafeWalletBalance(userAddress).call({ from: userAddress }),
@@ -336,7 +336,7 @@ export const useStore = create((set, get) => ({
       const Last7DaysEarning = await oceanView.methods.getLast7DaysEarningsUSD(userAddress, nowSec).call();
 
       const formatedRecord = [0, 1, 2, 3, 4, 5, 6].map((val, index) => (
-        { day: dayShortFromUnix(Last7DaysEarning?.dayIds[index]), 'amount': parseInt(Last7DaysEarning?.usdAmounts[index] )}
+        { day: dayShortFromUnix(Last7DaysEarning?.dayIds[index]), 'amount': parseInt(Last7DaysEarning?.usdAmounts[index]) }
       ))
 
       return formatedRecord;
@@ -349,9 +349,6 @@ export const useStore = create((set, get) => ({
       console.log("get7DayEarningTrend error:", error);
     }
   },
-
-
-
 
   // =====================================================================
   // Slab Income 
@@ -371,9 +368,9 @@ export const useStore = create((set, get) => ({
       const getSameSlabPartner = await oceanQuery.methods.getSameSlabPartners(userAddress).call();
 
       return {
-       slabLevel,
-       OverrideEarnings,
-       getSameSlabPartner
+        slabLevel,
+        OverrideEarnings,
+        getSameSlabPartner
       }
 
     } catch (err) {
@@ -383,9 +380,8 @@ export const useStore = create((set, get) => ({
 
 
   // =====================================================================
-  // Portfolio 
+  // One-Time Rewards 
   // =====================================================================
-
 
   oneTimeRewardClaimed: async (userAddress) => {
     try {
@@ -422,6 +418,123 @@ export const useStore = create((set, get) => ({
       console.log(err)
     }
   },
+
+
+  // =====================================================================
+  // Setting And Rules
+  // =====================================================================
+
+  regPortFoliAmt: async () => {
+    try {
+
+      const contract = new web3.eth.Contract(PortFolioManagerABI, Contract["PortFolioManager"]);
+
+      const portFolioAmtUsd = 10
+      const protFolioMicroUsd = portFolioAmtUsd * 1e6
+      console.log(protFolioMicroUsd)
+      const AmtInRamaWei = await contract.methods.getPackageValueInRAMA(protFolioMicroUsd).call();
+      const ramaAmt = parseInt(AmtInRamaWei) / 1e18
+
+      console.log(AmtInRamaWei)
+
+      return {
+        portFolioAmtUsd,
+        ramaAmt
+      };
+
+    } catch (error) {
+      console.log("regPortFoliAmt error:", error);
+    }
+  },
+
+  CreateportFolio: async (userAddress, sponsorInput) => {
+  console.log('CreateportFolio args:', userAddress, sponsorInput);
+  try {
+    if (!userAddress || typeof userAddress !== 'string' || !userAddress.startsWith('0x')) {
+      throw new Error('Invalid user address');
+    }
+
+    // Always use PROXY addresses here
+    const regContract = new web3.eth.Contract(UserRegistryABI, Contract.UserRegistry);
+    const pm = new web3.eth.Contract(PortFolioManagerABI, Contract.PortFolioManager);
+
+    // --- Resolve sponsor (address or numeric ID)
+    let sponsorAddress;
+    if (typeof sponsorInput === 'string' && sponsorInput.startsWith('0x')) {
+      sponsorAddress = sponsorInput;
+    } else {
+      const userId = typeof sponsorInput === 'number' ? sponsorInput : Number(sponsorInput);
+      if (!Number.isFinite(userId) || userId <= 0) throw new Error('Invalid sponsor id');
+      sponsorAddress = await regContract.methods.idToAddress(userId).call();
+    }
+
+    if (!sponsorAddress || !sponsorAddress.startsWith('0x')) {
+      throw new Error('Resolved sponsor address is invalid');
+    }
+    if (/^0x0{40}$/i.test(sponsorAddress)) {
+      throw new Error('Sponsor not found (zero address)');
+    }
+
+    // --- 1) Quote RAMA for $10 (micro-USD, 1e6)
+    const usdMicro = 10 * 1e6; // $10 -> 10,000,000 micro-USD
+    const ramaWeiQuoteStr = await pm.methods
+      .getPackageValueInRAMA(usdMicro.toString())
+      .call();
+
+    const ramaWei = parseInt(ramaWeiQuoteStr);
+    if (ramaWei <= 0) throw new Error('Invalid RAMA quote (0)');
+
+    // Optional: +0.5% tolerance for price movement (keep in sync with contract checks)
+    const tol = ramaWei / 200; // 0.5%
+    const valueToSend = (ramaWei + tol).toString();
+
+    console.log(sponsorAddress,valueToSend.toString(),ramaWei)
+
+    // --- 2) Build tx: createPortfolio(usdAmountMicro, referrer) PAYABLE
+    const data = pm.methods
+      .createPortfolio(sponsorAddress,valueToSend)
+      .encodeABI();
+
+    // --- 3) Gas price & gas limit (estimate against PortfolioManager, include "value")
+    const gasPrice = await web3.eth.getGasPrice();
+
+    let gasLimit;
+    try {
+      gasLimit = await web3.eth.estimateGas({
+        from: userAddress,
+        to: Contract.PortFolioManager,
+        data,
+        value: valueToSend,
+      });
+    } catch (err) {
+      console.error('Gas estimation failed:', err);
+      Swal.fire({
+        icon: 'error',
+        title: 'Gas estimation failed',
+        text: err?.message || 'Check contract & inputs.',
+      });
+      throw err;
+    }
+
+    const toHex = web3.utils.toHex;
+
+    const tx = {
+      from: userAddress,
+      to: Contract.PortFolioManager,   // ✅ correct target (PM)
+      data,
+      value: valueToSend,       // ✅ must send RAMA wei
+      gas: toHex(gasLimit),
+      gasPrice: toHex(gasPrice),
+      // chainId: <your chain id> // optional, wallet usually fills it
+    };
+
+    return tx; // your wallet (AppKit/WalletConnect) will sign & send this
+  } catch (error) {
+    console.error('CreateportFolio error:', error);
+    Swal.fire({ icon: 'error', title: 'Portfolio creation error', text: error?.message || 'Unknown error' });
+    throw error;
+  }
+}
 
 
 
