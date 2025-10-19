@@ -635,13 +635,97 @@ export const useStore = create((set, get) => ({
   // Stake And Invest
   // =====================================================================
 
-  InvestInPortFolio: async (userAddress,Amt) => {
-    console.log('InvestInPortFolio args:', userAddress,Amt);
+
+  GetchStakeInvest: async (userAddress) => {
     try {
-      
+      if (!userAddress) {
+        return
+      }
+      const oceanQuery = new web3.eth.Contract(
+        OceanQueryUpgradeableABI,
+        Contract["OceanQueryUpgradeable"]
+      );
+
+      const safeWalletBalanceRaw = await oceanQuery.methods.getSafeWalletBalance(userAddress).call({ from: userAddress })
+      const SafeWalletFund = parseFloat(safeWalletBalanceRaw);
+
+      return SafeWalletFund
+
+    } catch (error) {
+      console.error('InvestInPortFolio error:', error);
+      Swal.fire({ icon: 'error', title: 'Portfolio creation error', text: error?.message || 'Unknown error' });
+      throw error;
+    }
+  },
+
+
+  usdToRama: async (amt) => {
+    try {
+      if (!amt) {
+        return;
+      }
+      const contract = new web3.eth.Contract(PortFolioManagerABI, Contract["PortFolioManager"]);
+      const usdMicro = amt * 1e6;
+      const ramaWeiQuoteStr = await contract.methods.getPackageValueInRAMA(usdMicro.toString()).call();
+      const formattedAmt = parseFloat(ramaWeiQuoteStr) / 1e18
+
+      return formattedAmt
+
+    } catch (error) {
+      console.error('InvestInPortFolio error:', error);
+      Swal.fire({ icon: 'error', title: 'Portfolio creation error', text: error?.message || 'Unknown error' });
+      throw error;
+    }
+  },
+
+  RamaTOUsd: async (amt) => {
+    try {
+      // Ensure we have a valid amount to convert
+      if (!amt) {
+        return 0; // Return 0 or undefined based on your desired behavior for empty input
+      }
+
+      // 1. Setup contract instance
+      const contract = new web3.eth.Contract(PortFolioManagerABI, Contract["PortFolioManager"]);
+
+      // 2. Define the reference amount (1 USD in micro-units)
+      const usdMicro = 1e6; // 1 USD = 1,000,000 (used for querying the contract)
+
+      // 3. Get the amount of RAMA in Wei that equals 1 USD
+      const ramaWeiQuoteStr = await contract.methods.getPackageValueInRAMA(usdMicro.toString()).call();
+
+      // 4. Convert the RAMA value from Wei to full tokens.
+      // RamaValue is now the amount of RAMA tokens that equals $1 USD.
+      // (e.g., 20.0 RAMA per 1 USD)
+      const RamaValue = parseFloat(ramaWeiQuoteStr) / 1e18;
+
+      console.log(`RAMA tokens required for $1 USD: ${RamaValue}`);
+
+      // 5. CORRECT CONVERSION LOGIC:
+      // To get the USD amount, you divide the user's RAMA amount (amt)
+      // by the rate of RAMA per USD (RamaValue).
+      const UsdAmt = parseFloat(amt) / RamaValue;
+
+      // Example: If RamaValue is 20 (20 RAMA = $1 USD) and amt is 10 RAMA,
+      // UsdAmt = 10 / 20 = 0.5 (i.e., $0.50 USD).
+
+      return UsdAmt;
+
+    } catch (error) {
+      console.error('RamaTOUsd error:', error);
+      // Swal.fire removed as it requires an external library and might not be available
+      throw error;
+    }
+  },
+
+
+  InvestInPortFolio: async (userAddress, Amt) => {
+    console.log('InvestInPortFolio args:', userAddress, Amt);
+    try {
+
       const pm = new web3.eth.Contract(PortFolioManagerABI, Contract.PortFolioManager);
 
-      const usdMicro = Amt * 1e6; 
+      const usdMicro = Amt * 1e6;
       const ramaWeiQuoteStr = await pm.methods
         .getPackageValueInRAMA(usdMicro.toString())
         .call();
@@ -696,6 +780,9 @@ export const useStore = create((set, get) => ({
       throw error;
     }
   },
+
+
+
 
 
 

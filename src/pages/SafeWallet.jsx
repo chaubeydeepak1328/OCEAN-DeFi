@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Vault, TrendingUp, ArrowUpRight, History, Search, Eye, AlertCircle, Wallet } from 'lucide-react';
 import { getMockPortfolioDetails, formatRAMA, formatUSD } from '../utils/contractData';
+import { useNavigate } from 'react-router-dom';
 
 const mockTransactions = [
   { type: 'Slab Income', amount: 125.5, date: '2024-10-12 14:23', source: 'Team Rewards' },
@@ -11,6 +12,8 @@ const mockTransactions = [
 ];
 
 export default function SafeWallet() {
+  const navigate = useNavigate();
+
   const [showPortfolioViewer, setShowPortfolioViewer] = useState(false);
   const [lookupAddress, setLookupAddress] = useState('');
   const [lookupError, setLookupError] = useState('');
@@ -88,18 +91,15 @@ export default function SafeWallet() {
 
           <div className="grid grid-cols-2 gap-4 relative z-10">
             <button
-              onClick={handleStakeFromWallet}
+              onClick={()=>navigate("/dashboard/stake")}
               className="py-3 cyber-glass hover:bg-white/10 backdrop-blur-sm rounded-lg font-medium transition-colors border border-cyan-500/30 hover:border-cyan-500/50"
             >
               Stake from Wallet
             </button>
             <button
-              disabled
-              className="py-3 cyber-glass rounded-lg font-medium border border-cyan-500/20 text-cyan-400/40 cursor-not-allowed relative group"
-              title="Safe Wallet funds cannot be withdrawn"
+              className="py-3 cyber-glass rounded-lg font-medium border  border-cyan-500/20 text-cyan-400/40  relative group"
             >
-              <span className="group-hover:hidden">Transfer Out</span>
-              <span className="hidden group-hover:inline text-xs">Cannot Withdraw</span>
+              <span className='text-white '>withdraw</span>
             </button>
           </div>
         </div>

@@ -5,11 +5,10 @@ import Tooltip from '../components/Tooltip';
 import { useStore } from '../../store/useUserInfoStore';
 import Swal from 'sweetalert2';
 import { useAppKitAccount } from '@reown/appkit/react';
-import { useWaitForTransactionReceipt } from 'wagmi';
+import { useBalance, useWaitForTransactionReceipt } from 'wagmi';
 import { useTransaction } from "../../config/register";
 
 export default function StakeInvest() {
-  const [stakeAmount, setStakeAmount] = useState('');
   const [stakeType, setStakeType] = useState('self');
   const [beneficiaryAddress, setBeneficiaryAddress] = useState('');
   const [isValidatingAddress, setIsValidatingAddress] = useState(false);
@@ -18,25 +17,27 @@ export default function StakeInvest() {
   const [showInstructions, setShowInstructions] = useState(false);
   const [isStaking, setIsStaking] = useState(false);
 
-  const connectedWalletBalance = 12500.75;
-  const safeWalletBalance = 850.50;
-  const ramaPrice = 0.0245;
+  const [stakeAmount, setStakeAmount] = useState(10);
+  const [ramaStake, SetramaStake] = useState('')
+  const [walletBalance, setWalletBalance] = useState();
+  const [safeWalletBalance, setSafeWalletBalance] = useState(0);
+  const [ramaPrice,setRamaPrice] = useState(0)
 
-  const stakeValue = parseFloat(stakeAmount) || 0;
-  const ramaAmount = stakeValue / ramaPrice;
 
-  const tier = stakeValue >= 5010 ? 2 : 1;
+
+
+  const tier = parseFloat(stakeAmount) >= 5001 ? 2 : 1;
   const dailyRate = tier === 2 ? 0.40 : 0.33;
-  const projectedDaily = stakeValue * (dailyRate / 100);
+  const projectedDaily = parseFloat(stakeAmount) * (dailyRate / 100);
   const projectedMonthly = projectedDaily * 30;
 
   const boosterDailyRate = tier === 2 ? 0.80 : 0.66;
-  const boosterProjectedDaily = stakeValue * (boosterDailyRate / 100);
+  const boosterProjectedDaily = parseFloat(stakeAmount) * (boosterDailyRate / 100);
 
-  const selectedWalletBalance = useWallet === 'external' ? connectedWalletBalance : safeWalletBalance;
+  const selectedWalletBalance = useWallet === 'external' ? walletBalance : safeWalletBalance;
   const selectedWalletBalanceUSD = selectedWalletBalance * ramaPrice;
-  const isSufficientBalance = stakeValue > 0 && selectedWalletBalanceUSD >= stakeValue;
-  const isMinimumMet = stakeValue >= 10;
+  const isSufficientBalance = parseFloat(stakeAmount) > 0 && selectedWalletBalanceUSD >= parseFloat(stakeAmount);
+  const isMinimumMet = parseFloat(stakeAmount) >= 10;
   const canStake = isMinimumMet && isSufficientBalance && (stakeType === 'self' || addressValidation?.isValid);
 
   const quickAmounts = [10, 50, 100, 500, 1000, 5000];
@@ -87,20 +88,54 @@ export default function StakeInvest() {
 
     setIsStaking(true);
 
-    setTimeout(() => {
-      const recipient = stakeType === 'self' ? 'yourself' : `beneficiary ${beneficiaryAddress.substring(0, 10)}...`;
-      alert(`Success! Staked ${formatUSD(stakeValue * 1e8)} (${ramaAmount.toFixed(2)} RAMA) for ${recipient} using ${useWallet === 'external' ? 'Connected Wallet' : 'Safe Wallet'}.`);
-      setIsStaking(false);
-      setStakeAmount('');
-      setBeneficiaryAddress('');
-      setAddressValidation(null);
-    }, 2000);
+   
   };
 
   //  =================================================================
   //  InvestInPortFolio
   // ==================================================================
-  const InvestInPortFolio = useStore((s)=>s.InvestInPortFolio);
+  const userAddress = localStorage.getItem("userAddress") || null;
+
+
+
+  const InvestInPortFolio = useStore((s) => s.InvestInPortFolio);
+  const GetchStakeInvest = useStore((s) => s.GetchStakeInvest);
+  const usdToRama = useStore((s) => s.usdToRama);
+  const RamaTOUsd =useStore((s)=>s.RamaTOUsd);
+
+
+  const PriceConv = async (amt) => {
+    try {
+      const res = await usdToRama(amt);
+      console.log(res)
+      SetramaStake(res);
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
+  const GetRamaToUsd = async()=>{
+    try {
+      const res = await RamaTOUsd(1);
+      console.log(res)
+      setRamaPrice(res)
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
+  useEffect(()=>{
+    GetRamaToUsd()
+  },[])
+  
+
+  useEffect(() => {
+    if (stakeAmount!=='0') {
+      PriceConv(stakeAmount);
+    }
+  }, [stakeAmount])
+
+
   const { address, isConnected } = useAppKitAccount();
 
   const [error, setError] = useState('');
@@ -168,7 +203,7 @@ export default function StakeInvest() {
 
     try {
 
-      
+
       const response = await InvestInPortFolio(address, stakeAmount);
 
       if (response) {
@@ -190,6 +225,45 @@ export default function StakeInvest() {
       setIsSubmitting(false);
     }
   };
+
+
+  const fetchStakeInvest = async () => {
+    try {
+      if (!userAddress) {
+        return
+      }
+      const res = await GetchStakeInvest(userAddress);
+      console.log(res);
+      setSafeWalletBalance(res)
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
+
+  const { refetch } = useBalance({
+    address: userAddress
+  });
+
+  useEffect(() => {
+    const fetchedBalance = async () => {
+      try {
+        const balance = await refetch()
+        setWalletBalance((Number(balance?.data?.value) / 1e18).toFixed(5) + " " + balance?.data?.symbol.toString())
+
+      } catch (error) {
+        console.log(error)
+      }
+    }
+
+    fetchedBalance();
+
+  }, [address, isSuccess, isError, receipt])
+
+
+  useEffect(() => {
+    fetchStakeInvest()
+  }, [])
 
 
 
@@ -224,8 +298,25 @@ export default function StakeInvest() {
                   <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-cyan-400/60" size={20} />
                   <input
                     type="number"
+                    inputMode="decimal"
+                    min="10"
+                    step="any"
                     value={stakeAmount}
-                    onChange={(e) => setStakeAmount(e.target.value)}
+                    onChange={(e) => {
+                      // keep as string to avoid cursor jumps
+                      const v = e.target.value;
+
+                      // empty is allowed so users can type
+                      if (v === "") return setStakeAmount("");
+
+                      // clamp to >= 0
+                      const n = Number(v);
+                      setStakeAmount(Number.isFinite(n) && n >= 0 ? v : "0");
+                    }}
+                    onKeyDown={(e) => {
+                      // block scientific notation & signs
+                      if (["e", "E", "+", "-"].includes(e.key)) e.preventDefault();
+                    }}
                     placeholder="0.00"
                     className="w-full pl-12 pr-4 py-3 sm:py-4 bg-dark-900/50 border border-cyan-500/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-cyan-300 placeholder-cyan-400/30 transition-all text-lg"
                   />
@@ -243,11 +334,11 @@ export default function StakeInvest() {
                   ))}
                 </div>
 
-                {stakeValue > 0 && (
+                {stakeAmount > 0 && (
                   <div className="mt-3 space-y-2">
                     <p className="text-sm text-neon-green flex items-center gap-2">
                       <CheckCircle size={16} />
-                      ≈ {ramaAmount.toFixed(2)} RAMA @ ${ramaPrice}
+                      ≈ {ramaStake} RAMA
                     </p>
                     <div className="flex items-center gap-2">
                       <div className={`px-3 py-1 rounded-full text-xs font-bold ${tier === 2
@@ -263,11 +354,11 @@ export default function StakeInvest() {
                   </div>
                 )}
 
-                {stakeValue > 0 && !isMinimumMet && (
+                {stakeAmount > 0 && !isMinimumMet && (
                   <div className="mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg flex items-start gap-2">
                     <AlertCircle className="text-red-400 flex-shrink-0 mt-0.5" size={16} />
                     <p className="text-sm text-red-300">
-                      Minimum stake is $10. You need ${(10 - stakeValue).toFixed(2)} more.
+                      Minimum stake is $10. You need ${(10 - stakeAmount).toFixed(2)} more.
                     </p>
                   </div>
                 )}
@@ -386,8 +477,7 @@ export default function StakeInvest() {
                       <p className="text-sm font-medium text-cyan-300">Connected Wallet</p>
                     </div>
                     <div className="text-left space-y-1">
-                      <p className="text-lg font-bold text-cyan-300">{connectedWalletBalance.toFixed(2)} RAMA</p>
-                      <p className="text-xs text-cyan-300/70">≈ ${(connectedWalletBalance * ramaPrice).toFixed(2)} USD</p>
+                      <p className="text-lg font-bold text-cyan-300">{walletBalance}</p>
                     </div>
                   </button>
 
@@ -404,19 +494,18 @@ export default function StakeInvest() {
                     </div>
                     <div className="text-left space-y-1">
                       <p className="text-lg font-bold text-neon-green">{safeWalletBalance.toFixed(2)} RAMA</p>
-                      <p className="text-xs text-neon-green/70">≈ ${(safeWalletBalance * ramaPrice).toFixed(2)} USD</p>
                     </div>
                   </button>
                 </div>
 
-                {stakeValue > 0 && !isSufficientBalance && (
+                {stakeAmount <0 && !isSufficientBalance && (
                   <div className="mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg flex items-start gap-2">
                     <AlertCircle className="text-red-400 flex-shrink-0 mt-0.5" size={16} />
                     <div className="flex-1">
                       <p className="text-sm text-red-300 font-medium">Insufficient Balance</p>
                       <p className="text-xs text-red-300/80 mt-1">
-                        You need ${stakeValue.toFixed(2)} but only have ${selectedWalletBalanceUSD.toFixed(2)} in selected wallet.
-                        {useWallet === 'external' && safeWalletBalance * ramaPrice >= stakeValue && (
+                        You need ${stakeAmount.toFixed(2)} but only have ${selectedWalletBalanceUSD.toFixed(2)} in selected wallet.
+                        {useWallet === 'external' && safeWalletBalance * ramaPrice >= stakeAmount && (
                           <span className="block mt-1 text-neon-green">Try using Safe Wallet instead.</span>
                         )}
                       </p>
@@ -428,13 +517,13 @@ export default function StakeInvest() {
               <button
                 onClick={handleStakeNow}
                 disabled={!canStake || isStaking}
-                className={`w-full py-4 rounded-lg font-bold uppercase tracking-wide transition-all relative overflow-hidden group ${canStake && !isStaking
-                  ? 'bg-gradient-to-r from-cyan-500 to-neon-green text-dark-950 hover:shadow-neon-cyan hover:scale-[1.02] cursor-pointer'
-                  : 'bg-dark-700/50 text-cyan-400/40 cursor-not-allowed'
+                className={`w-full cursor-pointer py-4 rounded-lg bg-cyan-900 font-bold uppercase tracking-wide transition-all relative overflow-hidden group ${canStake && !isStaking
+                  ? 'bg-gradient-to-r from-cyan-500 to-cyan-800 text-dark-950 hover:shadow-neon-cyan hover:scale-[1.02] cursor-pointer'
+                  : 'bg-dark-700/50 text-cyan-400/40'
                   }`}
               >
                 {!canStake && !isStaking && (
-                  <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-neon-green opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-cyan-800 opacity-0 group-hover:opacity-100 transition-opacity" />
                 )}
                 <span className="relative z-10 flex items-center justify-center gap-2">
                   {isStaking ? (
@@ -444,13 +533,13 @@ export default function StakeInvest() {
                     </>
                   ) : (
                     <>
-                      Stake Now {stakeValue > 0 && `• ${formatUSD(stakeValue * 1e8)}`}
+                      Stake Now {stakeAmount > 0 && `$ ${stakeAmount}`}
                     </>
                   )}
                 </span>
               </button>
 
-              {!canStake && stakeValue > 0 && (
+              {!canStake && stakeAmount < 0 && (
                 <div className="text-xs text-cyan-300/70 text-center space-y-1">
                   {!isMinimumMet && <p>• Minimum stake: $10</p>}
                   {!isSufficientBalance && <p>• Insufficient balance in selected wallet</p>}
@@ -602,28 +691,28 @@ export default function StakeInvest() {
             </div>
           </div>
 
-          {stakeValue >= 50 && (
+          {stakeAmount >= 10 && (
             <div className="cyber-glass rounded-2xl p-4 sm:p-6 border border-cyan-500/30 relative overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
               <h3 className="font-semibold text-cyan-300 mb-4 uppercase tracking-wide">Projected Earnings</h3>
               <div className="space-y-3">
                 <div className="p-3 cyber-glass border border-cyan-500/20 rounded-lg">
                   <p className="text-xs text-cyan-300/90 mb-1 uppercase tracking-wide">Normal Mode (Daily)</p>
-                  <p className="text-xl font-bold text-cyan-300">{formatUSD(projectedDaily * 1e8)}</p>
+                  <p className="text-xl font-bold text-cyan-300">{formatUSD(projectedDaily)}</p>
                 </div>
                 <div className="p-3 cyber-glass border border-neon-green/20 rounded-lg">
                   <p className="text-xs text-cyan-300/90 mb-1 uppercase tracking-wide">Normal Mode (Monthly)</p>
-                  <p className="text-xl font-bold text-neon-green">{formatUSD(projectedMonthly * 1e8)}</p>
+                  <p className="text-xl font-bold text-neon-green">{formatUSD(projectedMonthly)}</p>
                 </div>
                 <div className="p-3 cyber-glass border border-neon-orange/20 rounded-lg">
                   <p className="text-xs text-cyan-300/90 mb-1 uppercase tracking-wide">Booster Mode (Daily)</p>
-                  <p className="text-xl font-bold text-neon-orange">{formatUSD(boosterProjectedDaily * 1e8)}</p>
+                  <p className="text-xl font-bold text-neon-orange">{formatUSD(boosterProjectedDaily)}</p>
                 </div>
               </div>
             </div>
           )}
 
-          {stakeValue > 0 && stakeValue < 50 && (
+          {stakeAmount< 0 && (
             <div className="cyber-glass border border-red-500/50 rounded-xl p-4 flex gap-3 animate-in fade-in slide-in-from-bottom-4 duration-300">
               <AlertCircle className="text-red-400 flex-shrink-0 animate-pulse" size={20} />
               <div>
@@ -655,7 +744,7 @@ export default function StakeInvest() {
               </>
             ) : (
               <>
-                Stake {stakeValue > 0 && `${formatUSD(stakeValue * 1e8)}`}
+                Stake {stakeAmount > 0 && `${formatUSD(stakeAmount * 1e8)}`}
               </>
             )}
           </span>
