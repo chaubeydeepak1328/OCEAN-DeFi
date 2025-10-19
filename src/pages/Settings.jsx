@@ -1,21 +1,207 @@
 import { Settings as SettingsIcon, AlertCircle, Clock, Lock, Copy, ExternalLink } from 'lucide-react';
 import { getMockPortfolioDetails } from '../utils/contractData';
 import { PortfolioStatus } from '../types/contract';
+import { useStore } from '../../store/useUserInfoStore';
+import { useEffect, useState } from 'react';
+import { useAppKitAccount } from '@reown/appkit/react';
+import { useTransaction } from '../../config/register';
+import { useWaitForTransactionReceipt } from 'wagmi';
+import Swal from 'sweetalert2';
 
 export default function Settings() {
   const portfolio = getMockPortfolioDetails();
   const isFrozen = portfolio.status === PortfolioStatus.Frozen;
   const freezeEndsAt = parseInt(portfolio.freezeEndsAt);
 
+  const userAddress = localStorage.getItem("userAddress") || null;
   const oceanContractAddress = "0x1234567890123456789012345678901234567890";
   const sponsorAddress = portfolio.upline;
-  const userAddress = "0x9876543210987654321098765432109876543210";
   const referralLink = `https://oceandefi.com/signup?ref=${userAddress}`;
 
   const copyToClipboard = (text, label) => {
     navigator.clipboard.writeText(text);
     alert(`${label} copied to clipboard!`);
   };
+
+
+  // =====================================================================
+  // Get the Total PortFolio Detail
+  // =====================================================================
+  const [portfolioIds, setPortFolioIds] = useState([]);
+  const [portFolioDetails, setFortFolioDetails] = useState()
+  const [selectedPid, setSelectedPid] = useState();
+
+  const getTOtalPortFolio = useStore((s) => s.getTOtalPortFolio);
+  const getPortFoliById = useStore((s) => s.getPortFoliById);
+  const withdrawPortFolio = useStore((s) => s.withdrawPortFolio);
+  const cancelExitPortFolio = useStore((s) => s.cancelExitPortFolio)
+
+
+
+
+  const getAllPortFolio = async () => {
+    try {
+      if (!userAddress) return;
+
+      const res = await getTOtalPortFolio(userAddress);
+
+      console.log(res?.ProtFolioDetail)
+      // normalize to strings (handles numbers, BigInt, BN, etc.)
+      const idList = (res?.ArrPortfolio ?? []).map((pid) => String(pid));
+
+      setPortFolioIds(idList);
+      setFortFolioDetails(res?.ProtFolioDetail);
+
+      // set default selection if available
+      if (idList.length > 0) setSelectedPid(idList[0]); // <-- ids[0] bug fixed
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+
+  useEffect(() => {
+    getAllPortFolio();
+  }, [])
+
+  const GetPortFolioById = async () => {
+    try {
+      if (!selectedPid) return;         // <-- robust check
+      const res = await getPortFoliById(selectedPid); // pass string id
+      setFortFolioDetails(res);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedPid) {
+      GetPortFolioById();
+    }
+  }, [selectedPid]);
+
+
+
+  // =====================================================================
+  // Withdraw PortFolio
+  // =====================================================================
+  const { address, isConnected } = useAppKitAccount();
+  const [trxData, setTrxData] = useState();
+  const [trxHash, setTrxHash] = useState();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+
+
+  const { handleSendTx, hash } = useTransaction(trxData !== null && trxData);
+  useEffect(() => {
+    if (trxData) {
+      try {
+        handleSendTx(trxData);
+      } catch (error) {
+        alert("somthing went Wrong");
+      }
+    }
+  }, [trxData]);
+
+  useEffect(() => {
+    if (hash) {
+      setTrxHash(hash)
+    }
+  }, [hash]);
+
+
+
+  const { data: receipt, isLoading: progress, isSuccess, isError } =
+    useWaitForTransactionReceipt({
+      hash,
+      confirmations: 1,
+    });
+
+  useEffect(() => {
+    if (isSuccess && receipt?.status === "success") {
+      const txUrl = `https://ramascan.com/tx/${receipt?.transactionHash}`;
+      const addrUrl = `https://ramascan.com/address/${address}`;
+
+
+      getAllPortFolio()
+
+      Swal.fire({
+        icon: "success",
+        title: "Transaction Successful",
+        html: `
+        <div style="text-align:left">
+          <p className="text-center">Your Transaction has been confirmed</p>
+        </div>
+      `,
+      });
+
+     
+    }
+    else if (isError || receipt?.status === "reverted") {
+      Swal.fire({
+        icon: "error",
+        title: "Transaction Failed",
+        text: "Your transaction failed or was reverted."
+      });
+    }
+  }, [isSuccess, isError, receipt, address]);
+
+
+  const handleWIdthdraw = async () => {
+    setIsSubmitting(true)
+
+    try {
+
+      // cancelExitPortFolio
+      const response = await withdrawPortFolio(address, selectedPid);
+
+      if (response) {
+        setTrxData(response); // ✅ this triggers the useEffect
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Transaction Error",
+          text: "Unable to build registration transaction." + trxHash,
+          confirmButtonText: "OK",
+        });
+      }
+
+    } catch (error) {
+      console.error('Registration failed:', error);
+      setIsSubmitting(false);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+
+  const CancelWithDrawal = async () => {
+    setIsSubmitting(true)
+
+    try {
+
+      // cancelExitPortFolio
+      const response = await cancelExitPortFolio(address, selectedPid);
+
+      if (response) {
+        setTrxData(response); // ✅ this triggers the useEffect
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Transaction Error",
+          text: "Unable to build registration transaction." + trxHash,
+          confirmButtonText: "OK",
+        });
+      }
+
+    } catch (error) {
+      console.error('Registration failed:', error);
+      setIsSubmitting(false);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
 
   return (
     <div className="space-y-6">
@@ -53,8 +239,88 @@ export default function Settings() {
                   </div>
                 </div>
 
-                <button className="w-full py-4 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg font-bold hover:shadow-lg transition-all hover:scale-[1.02] uppercase tracking-wide border border-red-500/30">
-                  Request Principal Withdrawal
+
+                {/* ================================================================================================================= */}
+                <div className="relative my-4">
+                  <select
+                    value={selectedPid}
+                    onChange={(e) => setSelectedPid(parseInt(e.target.value))}
+                    className="
+                      peer w-full sm:w-56 appearance-none pr-10 pl-3 py-2 rounded-lg
+                      bg-dark-900/60 text-cyan-200 border border-cyan-500/30
+                      focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400
+                      transition-all cyber-glass
+                    "
+                  >
+                    {portfolioIds.length === 0 && <option value="">No portfolios</option>}
+                    {portfolioIds?.map((pid) => (
+                      <option key={pid} value={pid}>
+                        {parseInt(pid)}
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* Chevron */}
+                  <svg
+                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 opacity-70"
+                    width="18" height="18" viewBox="0 0 24 24" fill="none"
+                  >
+                    <path d="M7 10l5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+
+                {/* ============================================================================================================== */}
+
+                {/* Portfolio Summary */}
+                {portfolioIds && (
+                  <div className="my-4 rounded-2xl bg-slate-900/60 border border-cyan-500/30 p-5 shadow-lg backdrop-blur">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-cyan-200 font-semibold">Portfolio Summary</h3>
+
+                      {/* optional: a compact PID badge */}
+                      <span className="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs">
+                        PID
+                        <span className="font-mono font-bold text-cyan-200">
+                          {parseInt(portFolioDetails?.pid) ?? "—"}
+                        </span>
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Principal (USD) */}
+                      <div className="rounded-xl bg-slate-900/70 border border-cyan-500/20 p-4">
+                        <p className="text-[11px] uppercase tracking-wide text-cyan-300/70 mb-1">
+                          Principal (USD)
+                        </p>
+
+                        {portFolioDetails?.principalUSD != null ? (
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-2xl font-bold text-emerald-300">
+                              ${(parseFloat(portFolioDetails.principalUSD) / 1e6)}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="h-7 w-36 rounded bg-cyan-500/20 animate-pulse" />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Optional footnote */}
+                    <p className="mt-3 text-xs text-cyan-300/70">
+                      Note: Amount will be freeze for 72 hours . withi 72 hours your can cancel the transaction after that you cannot do anythings
+                    </p>
+                  </div>
+                )}
+
+
+
+
+                <button disabled={isSubmitting || !isConnected} onClick={() => portFolioDetails?.active ? handleWIdthdraw() : CancelWithDrawal()} className={`w-full py-4 ${!isConnected ? 'bg-gradient-to-r from-red-300 to-red-400' : 'bg-gradient-to-r from-red-500 to-red-600 cursor-pointer'}  text-white rounded-lg font-bold hover:shadow-lg transition-all hover:scale-[1.02] uppercase tracking-wide border border-red-500/30  `}>
+                  {isSubmitting ? (
+                    <p>Processing...</p>
+                  ) :
+                    !isConnected ? "Connect Your Wallet" : (portFolioDetails?.active ? "Request Principal Withdrawal" : "Cancel Exit PortFolio")
+                  }
                 </button>
               </>
             ) : (

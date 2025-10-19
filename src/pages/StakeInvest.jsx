@@ -2,6 +2,11 @@ import { useState, useEffect } from 'react';
 import { Wallet, Zap, TrendingUp, AlertCircle, CheckCircle, HelpCircle, ChevronDown, ChevronUp, DollarSign, User, Users, Info, Clipboard } from 'lucide-react';
 import { formatUSD } from '../utils/contractData';
 import Tooltip from '../components/Tooltip';
+import { useStore } from '../../store/useUserInfoStore';
+import Swal from 'sweetalert2';
+import { useAppKitAccount } from '@reown/appkit/react';
+import { useWaitForTransactionReceipt } from 'wagmi';
+import { useTransaction } from "../../config/register";
 
 export default function StakeInvest() {
   const [stakeAmount, setStakeAmount] = useState('');
@@ -92,10 +97,101 @@ export default function StakeInvest() {
     }, 2000);
   };
 
-  const formatInputValue = (value) => {
-    const num = parseFloat(value) || 0;
-    return num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  //  =================================================================
+  //  InvestInPortFolio
+  // ==================================================================
+  const InvestInPortFolio = useStore((s)=>s.InvestInPortFolio);
+  const { address, isConnected } = useAppKitAccount();
+
+  const [error, setError] = useState('');
+  const [trxData, setTrxData] = useState();
+  const [trxHash, setTrxHash] = useState();
+
+
+
+
+  const { handleSendTx, hash } = useTransaction(trxData !== null && trxData);
+  useEffect(() => {
+    if (trxData) {
+      try {
+        handleSendTx(trxData);
+      } catch (error) {
+        alert("somthing went Wrong");
+      }
+    }
+  }, [trxData]);
+
+  useEffect(() => {
+    if (hash) {
+      setTrxHash(hash)
+    }
+  }, [hash]);
+
+
+
+
+
+  const { data: receipt, isLoading: progress, isSuccess, isError } =
+    useWaitForTransactionReceipt({
+      hash,
+      confirmations: 1,
+    });
+
+
+  useEffect(() => {
+    if (isSuccess && receipt?.status === "success") {
+
+      Swal.fire({
+        icon: "success",
+        title: "Registration Successful",
+        html: `
+          <div style="text-align:left">
+            <p style="margin:0 0 8px 0">Your registration has been confirmed</p>
+          </div>
+        `,
+      });
+    }
+    else if (isError || receipt?.status === "reverted") {
+      Swal.fire({
+        icon: "error",
+        title: "Transaction Failed",
+        text: "Your transaction failed or was reverted."
+      });
+    }
+  }, [isSuccess, isError, receipt, address]);
+
+
+
+  const CreateNewPortFolio = async () => {
+    setIsSubmitting(true);
+    setError('');
+
+    try {
+
+      
+      const response = await InvestInPortFolio(address, stakeAmount);
+
+      if (response) {
+        setTrxData(response); // ✅ this triggers the useEffect
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Transaction Error",
+          text: "Unable to build registration transaction." + trxHash,
+          confirmButtonText: "OK",
+        });
+      }
+
+      setIsSubmitting(false)
+    } catch (error) {
+      console.error('Registration failed:', error);
+      setError('An unexpected error occurred. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+
 
   return (
     <div className="space-y-6 pb-20 lg:pb-6">
@@ -154,11 +250,10 @@ export default function StakeInvest() {
                       ≈ {ramaAmount.toFixed(2)} RAMA @ ${ramaPrice}
                     </p>
                     <div className="flex items-center gap-2">
-                      <div className={`px-3 py-1 rounded-full text-xs font-bold ${
-                        tier === 2
-                          ? 'bg-gradient-to-r from-neon-green to-cyan-500 text-dark-950'
-                          : 'bg-gradient-to-r from-cyan-500 to-cyan-600 text-dark-950'
-                      }`}>
+                      <div className={`px-3 py-1 rounded-full text-xs font-bold ${tier === 2
+                        ? 'bg-gradient-to-r from-neon-green to-cyan-500 text-dark-950'
+                        : 'bg-gradient-to-r from-cyan-500 to-cyan-600 text-dark-950'
+                        }`}>
                         TIER {tier}
                       </div>
                       <span className="text-xs text-cyan-300/90">
@@ -191,22 +286,20 @@ export default function StakeInvest() {
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={() => setStakeType('self')}
-                    className={`p-3 sm:p-4 rounded-lg border-2 transition-all ${
-                      stakeType === 'self'
-                        ? 'border-cyan-500 bg-cyan-500/10'
-                        : 'border-cyan-500/20 hover:border-cyan-500/40 bg-dark-900/30'
-                    }`}
+                    className={`p-3 sm:p-4 rounded-lg border-2 transition-all ${stakeType === 'self'
+                      ? 'border-cyan-500 bg-cyan-500/10'
+                      : 'border-cyan-500/20 hover:border-cyan-500/40 bg-dark-900/30'
+                      }`}
                   >
                     <User className={`mx-auto mb-2 ${stakeType === 'self' ? 'text-cyan-400' : 'text-cyan-400/50'}`} size={24} />
                     <p className="text-sm font-medium text-cyan-300">Self</p>
                   </button>
                   <button
                     onClick={() => setStakeType('other')}
-                    className={`p-3 sm:p-4 rounded-lg border-2 transition-all ${
-                      stakeType === 'other'
-                        ? 'border-neon-green bg-neon-green/10'
-                        : 'border-neon-green/20 hover:border-neon-green/40 bg-dark-900/30'
-                    }`}
+                    className={`p-3 sm:p-4 rounded-lg border-2 transition-all ${stakeType === 'other'
+                      ? 'border-neon-green bg-neon-green/10'
+                      : 'border-neon-green/20 hover:border-neon-green/40 bg-dark-900/30'
+                      }`}
                   >
                     <Users className={`mx-auto mb-2 ${stakeType === 'other' ? 'text-neon-green' : 'text-neon-green/50'}`} size={24} />
                     <p className="text-sm font-medium text-neon-green">Other User</p>
@@ -225,13 +318,12 @@ export default function StakeInvest() {
                       value={beneficiaryAddress}
                       onChange={(e) => setBeneficiaryAddress(e.target.value)}
                       placeholder="0x... or USER123456"
-                      className={`w-full pl-4 pr-24 py-3 bg-dark-900/50 border rounded-lg focus:outline-none focus:ring-2 text-cyan-300 placeholder-cyan-400/30 font-mono transition-all ${
-                        addressValidation?.isValid
-                          ? 'border-neon-green/50 focus:ring-neon-green'
-                          : addressValidation?.isValid === false
+                      className={`w-full pl-4 pr-24 py-3 bg-dark-900/50 border rounded-lg focus:outline-none focus:ring-2 text-cyan-300 placeholder-cyan-400/30 font-mono transition-all ${addressValidation?.isValid
+                        ? 'border-neon-green/50 focus:ring-neon-green'
+                        : addressValidation?.isValid === false
                           ? 'border-red-500/50 focus:ring-red-500'
                           : 'border-cyan-500/30 focus:ring-cyan-500'
-                      }`}
+                        }`}
                     />
                     <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
                       {isValidatingAddress && (
@@ -249,11 +341,10 @@ export default function StakeInvest() {
                   </div>
 
                   {addressValidation && (
-                    <div className={`mt-2 p-2 rounded-lg flex items-center gap-2 text-sm ${
-                      addressValidation.isValid
-                        ? 'bg-neon-green/10 text-neon-green'
-                        : 'bg-red-500/10 text-red-300'
-                    }`}>
+                    <div className={`mt-2 p-2 rounded-lg flex items-center gap-2 text-sm ${addressValidation.isValid
+                      ? 'bg-neon-green/10 text-neon-green'
+                      : 'bg-red-500/10 text-red-300'
+                      }`}>
                       {addressValidation.isValid ? (
                         <CheckCircle size={16} />
                       ) : (
@@ -285,11 +376,10 @@ export default function StakeInvest() {
                 <div className="grid sm:grid-cols-2 gap-3">
                   <button
                     onClick={() => setUseWallet('external')}
-                    className={`p-4 rounded-lg border-2 transition-all ${
-                      useWallet === 'external'
-                        ? 'border-cyan-500 bg-cyan-500/10'
-                        : 'border-cyan-500/20 hover:border-cyan-500/40 bg-dark-900/30'
-                    }`}
+                    className={`p-4 rounded-lg border-2 transition-all ${useWallet === 'external'
+                      ? 'border-cyan-500 bg-cyan-500/10'
+                      : 'border-cyan-500/20 hover:border-cyan-500/40 bg-dark-900/30'
+                      }`}
                   >
                     <div className="flex items-center gap-3 mb-2">
                       <Wallet className={useWallet === 'external' ? 'text-cyan-400' : 'text-cyan-400/50'} size={24} />
@@ -303,11 +393,10 @@ export default function StakeInvest() {
 
                   <button
                     onClick={() => setUseWallet('safe')}
-                    className={`p-4 rounded-lg border-2 transition-all ${
-                      useWallet === 'safe'
-                        ? 'border-neon-green bg-neon-green/10'
-                        : 'border-neon-green/20 hover:border-neon-green/40 bg-dark-900/30'
-                    }`}
+                    className={`p-4 rounded-lg border-2 transition-all ${useWallet === 'safe'
+                      ? 'border-neon-green bg-neon-green/10'
+                      : 'border-neon-green/20 hover:border-neon-green/40 bg-dark-900/30'
+                      }`}
                   >
                     <div className="flex items-center gap-3 mb-2">
                       <Wallet className={useWallet === 'safe' ? 'text-neon-green' : 'text-neon-green/50'} size={24} />
@@ -339,11 +428,10 @@ export default function StakeInvest() {
               <button
                 onClick={handleStakeNow}
                 disabled={!canStake || isStaking}
-                className={`w-full py-4 rounded-lg font-bold uppercase tracking-wide transition-all relative overflow-hidden group ${
-                  canStake && !isStaking
-                    ? 'bg-gradient-to-r from-cyan-500 to-neon-green text-dark-950 hover:shadow-neon-cyan hover:scale-[1.02] cursor-pointer'
-                    : 'bg-dark-700/50 text-cyan-400/40 cursor-not-allowed'
-                }`}
+                className={`w-full py-4 rounded-lg font-bold uppercase tracking-wide transition-all relative overflow-hidden group ${canStake && !isStaking
+                  ? 'bg-gradient-to-r from-cyan-500 to-neon-green text-dark-950 hover:shadow-neon-cyan hover:scale-[1.02] cursor-pointer'
+                  : 'bg-dark-700/50 text-cyan-400/40 cursor-not-allowed'
+                  }`}
               >
                 {!canStake && !isStaking && (
                   <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-neon-green opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -554,11 +642,10 @@ export default function StakeInvest() {
         <button
           onClick={handleStakeNow}
           disabled={!canStake || isStaking}
-          className={`w-full py-4 rounded-lg font-bold uppercase tracking-wide transition-all relative overflow-hidden ${
-            canStake && !isStaking
-              ? 'bg-gradient-to-r from-cyan-500 to-neon-green text-dark-950'
-              : 'bg-dark-700/50 text-cyan-400/40 cursor-not-allowed'
-          }`}
+          className={`w-full py-4 rounded-lg font-bold uppercase tracking-wide transition-all relative overflow-hidden ${canStake && !isStaking
+            ? 'bg-gradient-to-r from-cyan-500 to-neon-green text-dark-950'
+            : 'bg-dark-700/50 text-cyan-400/40 cursor-not-allowed'
+            }`}
         >
           <span className="relative z-10 flex items-center justify-center gap-2">
             {isStaking ? (

@@ -448,96 +448,254 @@ export const useStore = create((set, get) => ({
   },
 
   CreateportFolio: async (userAddress, sponsorInput) => {
-  console.log('CreateportFolio args:', userAddress, sponsorInput);
-  try {
-    if (!userAddress || typeof userAddress !== 'string' || !userAddress.startsWith('0x')) {
-      throw new Error('Invalid user address');
-    }
-
-    // Always use PROXY addresses here
-    const regContract = new web3.eth.Contract(UserRegistryABI, Contract.UserRegistry);
-    const pm = new web3.eth.Contract(PortFolioManagerABI, Contract.PortFolioManager);
-
-    // --- Resolve sponsor (address or numeric ID)
-    let sponsorAddress;
-    if (typeof sponsorInput === 'string' && sponsorInput.startsWith('0x')) {
-      sponsorAddress = sponsorInput;
-    } else {
-      const userId = typeof sponsorInput === 'number' ? sponsorInput : Number(sponsorInput);
-      if (!Number.isFinite(userId) || userId <= 0) throw new Error('Invalid sponsor id');
-      sponsorAddress = await regContract.methods.idToAddress(userId).call();
-    }
-
-    if (!sponsorAddress || !sponsorAddress.startsWith('0x')) {
-      throw new Error('Resolved sponsor address is invalid');
-    }
-    if (/^0x0{40}$/i.test(sponsorAddress)) {
-      throw new Error('Sponsor not found (zero address)');
-    }
-
-    // --- 1) Quote RAMA for $10 (micro-USD, 1e6)
-    const usdMicro = 10 * 1e6; // $10 -> 10,000,000 micro-USD
-    const ramaWeiQuoteStr = await pm.methods
-      .getPackageValueInRAMA(usdMicro.toString())
-      .call();
-
-    const ramaWei = parseInt(ramaWeiQuoteStr);
-    if (ramaWei <= 0) throw new Error('Invalid RAMA quote (0)');
-
-    // Optional: +0.5% tolerance for price movement (keep in sync with contract checks)
-    const tol = ramaWei / 200; // 0.5%
-    const valueToSend = (ramaWei + tol).toString();
-
-    console.log(sponsorAddress,valueToSend.toString(),ramaWei)
-
-    // --- 2) Build tx: createPortfolio(usdAmountMicro, referrer) PAYABLE
-    const data = pm.methods
-      .createPortfolio(sponsorAddress,valueToSend)
-      .encodeABI();
-
-    // --- 3) Gas price & gas limit (estimate against PortfolioManager, include "value")
-    const gasPrice = await web3.eth.getGasPrice();
-
-    let gasLimit;
+    console.log('CreateportFolio args:', userAddress, sponsorInput);
     try {
-      gasLimit = await web3.eth.estimateGas({
+      if (!userAddress || typeof userAddress !== 'string' || !userAddress.startsWith('0x')) {
+        throw new Error('Invalid user address');
+      }
+
+      // Always use PROXY addresses here
+      const regContract = new web3.eth.Contract(UserRegistryABI, Contract.UserRegistry);
+      const pm = new web3.eth.Contract(PortFolioManagerABI, Contract.PortFolioManager);
+
+      // --- Resolve sponsor (address or numeric ID)
+      let sponsorAddress;
+      if (typeof sponsorInput === 'string' && sponsorInput.startsWith('0x')) {
+        sponsorAddress = sponsorInput;
+      } else {
+        const userId = typeof sponsorInput === 'number' ? sponsorInput : Number(sponsorInput);
+        if (!Number.isFinite(userId) || userId <= 0) throw new Error('Invalid sponsor id');
+        sponsorAddress = await regContract.methods.idToAddress(userId).call();
+      }
+
+      if (!sponsorAddress || !sponsorAddress.startsWith('0x')) {
+        throw new Error('Resolved sponsor address is invalid');
+      }
+      if (/^0x0{40}$/i.test(sponsorAddress)) {
+        throw new Error('Sponsor not found (zero address)');
+      }
+
+      // --- 1) Quote RAMA for $10 (micro-USD, 1e6)
+      const usdMicro = 10 * 1e6; // $10 -> 10,000,000 micro-USD
+      const ramaWeiQuoteStr = await pm.methods
+        .getPackageValueInRAMA(usdMicro.toString())
+        .call();
+
+      const ramaWei = parseInt(ramaWeiQuoteStr);
+      if (ramaWei <= 0) throw new Error('Invalid RAMA quote (0)');
+
+      // Optional: +0.5% tolerance for price movement (keep in sync with contract checks)
+      const tol = ramaWei / 200; // 0.5%
+      const valueToSend = (ramaWei + tol).toString();
+
+      console.log(sponsorAddress, valueToSend.toString(), ramaWei)
+
+      // --- 2) Build tx: createPortfolio(usdAmountMicro, referrer) PAYABLE
+      const data = pm.methods
+        .createPortfolio(sponsorAddress, valueToSend)
+        .encodeABI();
+
+      // --- 3) Gas price & gas limit (estimate against PortfolioManager, include "value")
+      const gasPrice = await web3.eth.getGasPrice();
+
+      let gasLimit;
+      try {
+        gasLimit = await web3.eth.estimateGas({
+          from: userAddress,
+          to: Contract.PortFolioManager,
+          data,
+          value: valueToSend,
+        });
+      } catch (err) {
+        console.error('Gas estimation failed:', err);
+        Swal.fire({
+          icon: 'error',
+          title: 'Gas estimation failed',
+          text: err?.message || 'Check contract & inputs.',
+        });
+        throw err;
+      }
+
+      const toHex = web3.utils.toHex;
+
+      const tx = {
         from: userAddress,
-        to: Contract.PortFolioManager,
+        to: Contract.PortFolioManager,   // ✅ correct target (PM)
         data,
-        value: valueToSend,
-      });
-    } catch (err) {
-      console.error('Gas estimation failed:', err);
-      Swal.fire({
-        icon: 'error',
-        title: 'Gas estimation failed',
-        text: err?.message || 'Check contract & inputs.',
-      });
-      throw err;
+        value: valueToSend,       // ✅ must send RAMA wei
+        gas: toHex(gasLimit),
+        gasPrice: toHex(gasPrice),
+        // chainId: <your chain id> // optional, wallet usually fills it
+      };
+
+      return tx; // your wallet (AppKit/WalletConnect) will sign & send this
+    } catch (error) {
+      console.error('CreateportFolio error:', error);
+      Swal.fire({ icon: 'error', title: 'Portfolio creation error', text: error?.message || 'Unknown error' });
+      throw error;
     }
-
-    const toHex = web3.utils.toHex;
-
-    const tx = {
-      from: userAddress,
-      to: Contract.PortFolioManager,   // ✅ correct target (PM)
-      data,
-      value: valueToSend,       // ✅ must send RAMA wei
-      gas: toHex(gasLimit),
-      gasPrice: toHex(gasPrice),
-      // chainId: <your chain id> // optional, wallet usually fills it
-    };
-
-    return tx; // your wallet (AppKit/WalletConnect) will sign & send this
-  } catch (error) {
-    console.error('CreateportFolio error:', error);
-    Swal.fire({ icon: 'error', title: 'Portfolio creation error', text: error?.message || 'Unknown error' });
-    throw error;
-  }
-}
+  },
 
 
 
+  // =====================================================================
+  // PortFolio Withdrawal
+  // =====================================================================
+
+
+  withdrawPortFolio: async (userAddress, pid) => {
+    try {
+      if (!userAddress && !pid) {
+        throw new Error('Invalid user address and PId');
+      }
+
+      const contract = new web3.eth.Contract(PortFolioManagerABI, Contract["PortFolioManager"]);
+
+
+      const data = contract.methods.applyExit(pid).encodeABI();
+
+      // --- Gas price
+      const gasPrice = await web3.eth.getGasPrice(); // string in wei
+
+      // --- IMPORTANT: do NOT send any value; fn is nonpayable
+      let gasLimit;
+      try {
+        gasLimit = await web3.eth.estimateGas({
+          from: userAddress,
+          to: Contract['PortFolioManager'],
+          data,                  // no "value" here
+        });
+      } catch (err) {
+        console.error('Gas estimation failed:', err);
+        Swal.fire({ icon: 'error', title: 'Gas estimation failed', text: err?.message || 'Check contract & inputs.' });
+        throw err;
+      }
+      const toHex = web3.utils.toHex;
+      const tx = {
+        from: userAddress,
+        to: Contract['PortFolioManager'],
+        data,
+        gas: toHex(gasLimit),
+        gasPrice: toHex(gasPrice),
+      };
+      return tx;
+    } catch (error) {
+      console.error('withdraw error:', error);
+      Swal.fire({ icon: 'error', title: 'Registration error', text: error?.message || 'Unknown error' });
+      throw error;
+    }
+  },
+
+  cancelExitPortFolio: async (userAddress, pid) => {
+    try {
+      if (!userAddress && !pid) {
+        throw new Error('Invalid user address and PId');
+      }
+
+      const contract = new web3.eth.Contract(PortFolioManagerABI, Contract["PortFolioManager"]);
+
+
+      const data = contract.methods.cancelExit(pid).encodeABI();
+
+      // --- Gas price
+      const gasPrice = await web3.eth.getGasPrice(); // string in wei
+
+      // --- IMPORTANT: do NOT send any value; fn is nonpayable
+      let gasLimit;
+      try {
+        gasLimit = await web3.eth.estimateGas({
+          from: userAddress,
+          to: Contract['PortFolioManager'],
+          data,                  // no "value" here
+        });
+      } catch (err) {
+        console.error('Gas estimation failed:', err);
+        Swal.fire({ icon: 'error', title: 'Gas estimation failed', text: err?.message || 'Check contract & inputs.' });
+        throw err;
+      }
+      const toHex = web3.utils.toHex;
+      const tx = {
+        from: userAddress,
+        to: Contract['PortFolioManager'],
+        data,
+        gas: toHex(gasLimit),
+        gasPrice: toHex(gasPrice),
+      };
+      return tx;
+    } catch (error) {
+      console.error('withdraw error:', error);
+      Swal.fire({ icon: 'error', title: 'Registration error', text: error?.message || 'Unknown error' });
+      throw error;
+    }
+  },
+
+
+
+  // =====================================================================
+  // Stake And Invest
+  // =====================================================================
+
+  InvestInPortFolio: async (userAddress,Amt) => {
+    console.log('InvestInPortFolio args:', userAddress,Amt);
+    try {
+      
+      const pm = new web3.eth.Contract(PortFolioManagerABI, Contract.PortFolioManager);
+
+      const usdMicro = Amt * 1e6; 
+      const ramaWeiQuoteStr = await pm.methods
+        .getPackageValueInRAMA(usdMicro.toString())
+        .call();
+
+      const ramaWei = parseInt(ramaWeiQuoteStr);
+      if (ramaWei <= 0) throw new Error('Invalid RAMA quote (0)');
+
+      const tol = ramaWei / 200; // 0.5%
+      const valueToSend = (ramaWei + tol).toString();
+
+      console.log(sponsorAddress, valueToSend.toString(), ramaWei)
+
+      const data = pm.methods
+        .createPortfolio(sponsorAddress, valueToSend)
+        .encodeABI();
+
+      const gasPrice = await web3.eth.getGasPrice();
+
+      let gasLimit;
+      try {
+        gasLimit = await web3.eth.estimateGas({
+          from: userAddress,
+          to: Contract.PortFolioManager,
+          data,
+          value: valueToSend,
+        });
+      } catch (err) {
+        console.error('Gas estimation failed:', err);
+        Swal.fire({
+          icon: 'error',
+          title: 'Gas estimation failed',
+          text: err?.message || 'Check contract & inputs.',
+        });
+        throw err;
+      }
+
+      const toHex = web3.utils.toHex;
+
+      const tx = {
+        from: userAddress,
+        to: Contract.PortFolioManager,   // ✅ correct target (PM)
+        data,
+        value: valueToSend,       // ✅ must send RAMA wei
+        gas: toHex(gasLimit),
+        gasPrice: toHex(gasPrice),
+      };
+
+      return tx; // your wallet (AppKit/WalletConnect) will sign & send this
+    } catch (error) {
+      console.error('InvestInPortFolio error:', error);
+      Swal.fire({ icon: 'error', title: 'Portfolio creation error', text: error?.message || 'Unknown error' });
+      throw error;
+    }
+  },
 
 
 
