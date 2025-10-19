@@ -26,11 +26,13 @@ export default function Dashboard() {
   const [selectedPid, setSelectedPid] = useState(1);
   const [portFolioDetails, setFortFolioDetails] = useState();
   const [DashBoardDetail, setDashboardDetails] = useState();
+  const [last7Day, setLast7Days] = useState();
 
 
   const getTOtalPortFolio = useStore((s) => s.getTOtalPortFolio);
   const getPortFoliById = useStore((s) => s.getPortFoliById);
   const getDashboardDetails = useStore((s) => s.getDashboardDetails);
+  const get7DayEarningTrend = useStore((s) => s.get7DayEarningTrend);
 
 
   const userAddress = localStorage.getItem("userAddress") || null;
@@ -46,6 +48,7 @@ export default function Dashboard() {
       console.log(error)
     }
   }
+
 
   // ===========================================================================
   // Dashboard details
@@ -64,9 +67,23 @@ export default function Dashboard() {
     }
   }
 
+  const get7daysTrend = async () => {
+    try {
+      if (!userAddress) {
+        return;
+      }
+      const res = await get7DayEarningTrend(userAddress);
+      console.log("7-Days Trend",res)
+      setLast7Days(res)
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
   useEffect(() => {
     getDashboardInfo();
-    fetchPortFolio()
+    fetchPortFolio();
+    get7daysTrend();
   }, [])
 
   const GetPortFolioById = async () => {
@@ -299,7 +316,7 @@ export default function Dashboard() {
                     <p className="text-lg sm:text-xl font-bold text-neon-orange group-hover:text-neon-glow transition-all">
                       {['Coral Reef', 'Shallow Waters', 'Tide Pool', 'Wave Crest', 'Open Sea', 'Deep Current', 'Ocean Floor', 'Abyssal Zone', 'Mariana Trench', 'Pacific Master', 'Ocean Sovereign'][parseInt(DashBoardDetail?.slabPanel?.slabIndex) - 1] || 'None'}
                     </p>
-                    <p className="text-xs text-neon-orange/70 mt-0.5">Level {parseInt(DashBoardDetail?.slabPanel?.slabIndex) }</p>
+                    <p className="text-xs text-neon-orange/70 mt-0.5">Level {parseInt(DashBoardDetail?.slabPanel?.slabIndex)}</p>
                   </div>
                 </div>
               )}
@@ -310,7 +327,7 @@ export default function Dashboard() {
             <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
             <h2 className="text-base sm:text-lg font-semibold text-cyan-300 mb-4 uppercase tracking-wide">7-Day Earnings Trend</h2>
             <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={quickEarningsData}>
+              <LineChart data={last7Day}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,240,255,0.1)" />
                 <XAxis dataKey="day" stroke="#22d3ee" fontSize={12} />
                 <YAxis stroke="#22d3ee" fontSize={12} />
@@ -357,7 +374,7 @@ export default function Dashboard() {
               </div>
             </div>
             <NumberPopup
-              value={formatUSD(portfolio.accruedGrowthUSD)}
+              value={formatUSD(DashBoardDetail?.accuredGrowth)}
               label="Accrued Growth"
               className="text-2xl sm:text-3xl font-bold mb-4 text-neon-green relative z-10"
             />

@@ -1,5 +1,7 @@
 import { Award, TrendingUp, Users, AlertCircle, Layers, ArrowDown } from 'lucide-react';
 import { SLAB_LEVELS, formatUSD, formatPercentage, getMockUserStatus } from '../utils/contractData';
+import { useStore } from '../../store/useUserInfoStore';
+import { useEffect, useState } from 'react';
 
 // Ocean-themed slab tier names
 const SLAB_TIER_NAMES = [
@@ -34,11 +36,41 @@ export default function SlabIncome() {
   const userStatus = getMockUserStatus();
   const currentSlabIndex = parseInt(userStatus.currentSlabIndex);
 
+
+
+
+
+  const userAddress = localStorage.getItem("userAddress") || null;
+
+  const [slabDetails, setSlabDetails] = useState();
+
+  const getSlabLevel = useStore((s) => s.getSlabLevel);
+
+  const fetchSlabLevel = async () => {
+    try {
+      if (!userAddress) {
+        return;
+      }
+      const res = await getSlabLevel(userAddress);
+      console.log("fetchSlabLevel", res)
+      setSlabDetails(res)
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  useEffect(() => {
+    fetchSlabLevel();
+  }, [userAddress])
+
+
+
   // Calculate total Same Slab Override earnings
-  const totalL1Earnings = mockSameSlabEarnings.L1.reduce((sum, item) => sum + parseFloat(item.earned), 0);
-  const totalL2Earnings = mockSameSlabEarnings.L2.reduce((sum, item) => sum + parseFloat(item.earned), 0);
-  const totalL3Earnings = mockSameSlabEarnings.L3.reduce((sum, item) => sum + parseFloat(item.earned), 0);
-  const totalOverrideEarnings = totalL1Earnings + totalL2Earnings + totalL3Earnings;
+  const totalL1Earnings = parseFloat(slabDetails?.OverrideEarnings?.l1).toFixed(2);
+  const totalL2Earnings = parseFloat(slabDetails?.OverrideEarnings?.l1).toFixed(2)
+  const totalL3Earnings = parseFloat(slabDetails?.OverrideEarnings?.l1).toFixed(2);
+  const totalOverrideEarnings = parseFloat(totalL1Earnings + totalL2Earnings + totalL3Earnings);
+
 
   return (
     <div className="space-y-6">
@@ -63,37 +95,15 @@ export default function SlabIncome() {
               <p className="text-xs text-cyan-300/90">Your qualification tier</p>
             </div>
           </div>
-          <p className="text-5xl font-bold mb-2 text-neon-green relative z-10">{currentSlabIndex}</p>
+          <p className="text-5xl font-bold mb-2 text-neon-green relative z-10">{parseInt(slabDetails?.slabLevel)}</p>
           <p className="text-lg text-cyan-300 relative z-10">
             {currentSlabIndex > 0 && formatPercentage(SLAB_LEVELS[currentSlabIndex - 1].percentageBPS)} Income Share
           </p>
         </div>
 
-        <div className="cyber-glass rounded-xl p-6 border border-cyan-500/30">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 cyber-glass border border-neon-green/20 rounded-lg">
-              <TrendingUp className="text-neon-green" size={20} />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-cyan-300">Qualified Volume</p>
-              <p className="text-xs text-cyan-300/90">40:30:30 calculated</p>
-            </div>
-          </div>
-          <p className="text-2xl font-bold text-cyan-300">{formatUSD(userStatus.qualifiedVolumeUSD)}</p>
-        </div>
 
-        <div className="cyber-glass rounded-xl p-6 border border-cyan-500/30">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 cyber-glass border border-cyan-500/20 rounded-lg">
-              <Users className="text-cyan-400" size={20} />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-cyan-300">Direct Members</p>
-              <p className="text-xs text-cyan-300/90">Active referrals</p>
-            </div>
-          </div>
-          <p className="text-2xl font-bold text-cyan-300">{userStatus.directChildrenCount}</p>
-        </div>
+
+
       </div>
 
       {/* Same Slab Override Earnings Section */}
@@ -109,7 +119,7 @@ export default function SlabIncome() {
           </div>
           <div className="text-right">
             <p className="text-xs text-cyan-300/90">Total Earned</p>
-            <p className="text-2xl font-bold text-neon-purple">{totalOverrideEarnings.toFixed(2)} RAMA</p>
+            <p className="text-2xl font-bold text-neon-purple">{totalOverrideEarnings} RAMA</p>
           </div>
         </div>
 
@@ -122,10 +132,10 @@ export default function SlabIncome() {
                 <span className="text-sm font-semibold text-neon-purple">First Wave (10%)</span>
               </div>
               <span className="text-xs bg-neon-purple/20 text-neon-purple px-2 py-1 rounded">
-                {mockSameSlabEarnings.L1.length} Members
+                {parseInt(slabDetails?.getSameSlabPartner?.firstWave.length)} Members
               </span>
             </div>
-            <p className="text-2xl font-bold text-cyan-300">{totalL1Earnings.toFixed(2)} RAMA</p>
+            <p className="text-2xl font-bold text-cyan-300">{parseFloat(slabDetails?.OverrideEarnings?.l1).toFixed(2)} RAMA</p>
             <p className="text-xs text-cyan-300/90 mt-1">Primary same-slab partners</p>
           </div>
 
@@ -136,10 +146,10 @@ export default function SlabIncome() {
                 <span className="text-sm font-semibold text-cyan-400">Second Wave (5%)</span>
               </div>
               <span className="text-xs bg-cyan-500/20 text-cyan-300 px-2 py-1 rounded">
-                {mockSameSlabEarnings.L2.length} Members
+                {parseInt(slabDetails?.getSameSlabPartner?.secondWave.length)} Members
               </span>
             </div>
-            <p className="text-2xl font-bold text-cyan-300">{totalL2Earnings.toFixed(2)} RAMA</p>
+            <p className="text-2xl font-bold text-cyan-300">{parseFloat(slabDetails?.OverrideEarnings?.l2).toFixed(2)} RAMA</p>
             <p className="text-xs text-cyan-300/90 mt-1">Extended same-slab partners</p>
           </div>
 
@@ -150,10 +160,10 @@ export default function SlabIncome() {
                 <span className="text-sm font-semibold text-neon-green">Third Wave (5%)</span>
               </div>
               <span className="text-xs bg-neon-green/20 text-neon-green px-2 py-1 rounded">
-                {mockSameSlabEarnings.L3.length} Members
+                {parseInt(slabDetails?.getSameSlabPartner?.thirdWave.length)} Members
               </span>
             </div>
-            <p className="text-2xl font-bold text-cyan-300">{totalL3Earnings.toFixed(2)} RAMA</p>
+            <p className="text-2xl font-bold text-cyan-300">{parseFloat(slabDetails?.OverrideEarnings?.l3).toFixed(2)}RAMA</p>
             <p className="text-xs text-cyan-300/90 mt-1">Deep same-slab partners</p>
           </div>
         </div>
@@ -316,23 +326,20 @@ export default function SlabIncome() {
                 return (
                   <tr
                     key={idx}
-                    className={`border-b border-cyan-500/10 transition-colors ${
-                      isCurrent ? 'bg-neon-green/5 hover:bg-neon-green/10' : isAchieved ? 'bg-emerald-500/5 hover:bg-emerald-500/10' : 'hover:bg-cyan-500/5'
-                    }`}
+                    className={`border-b border-cyan-500/10 transition-colors ${isCurrent ? 'bg-neon-green/5 hover:bg-neon-green/10' : isAchieved ? 'bg-emerald-500/5 hover:bg-emerald-500/10' : 'hover:bg-cyan-500/5'
+                      }`}
                   >
                     <td className="py-3 px-4">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
-                        isCurrent ? 'bg-gradient-to-br from-neon-green to-cyan-500 text-dark-950'
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${isCurrent ? 'bg-gradient-to-br from-neon-green to-cyan-500 text-dark-950'
                         : isAchieved ? 'bg-gradient-to-br from-emerald-500 to-green-600 text-white'
-                        : 'cyber-glass border border-cyan-500/30 text-cyan-300/50'
-                      }`}>
+                          : 'cyber-glass border border-cyan-500/30 text-cyan-300/50'
+                        }`}>
                         {slabNum}
                       </div>
                     </td>
                     <td className="py-3 px-4">
-                      <span className={`font-semibold ${
-                        isCurrent ? 'text-neon-green' : isAchieved ? 'text-emerald-400' : 'text-cyan-300/50'
-                      }`}>
+                      <span className={`font-semibold ${isCurrent ? 'text-neon-green' : isAchieved ? 'text-emerald-400' : 'text-cyan-300/50'
+                        }`}>
                         {SLAB_TIER_NAMES[idx]}
                       </span>
                     </td>
@@ -340,9 +347,8 @@ export default function SlabIncome() {
                       {formatUSD(slab.requiredVolumeUSD)}
                     </td>
                     <td className="py-3 px-4">
-                      <span className={`font-bold text-lg ${
-                        isCurrent ? 'text-neon-green' : isAchieved ? 'text-emerald-400' : 'text-cyan-300/50'
-                      }`}>
+                      <span className={`font-bold text-lg ${isCurrent ? 'text-neon-green' : isAchieved ? 'text-emerald-400' : 'text-cyan-300/50'
+                        }`}>
                         {formatPercentage(slab.percentageBPS)}
                       </span>
                     </td>

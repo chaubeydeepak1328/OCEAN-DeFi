@@ -5,7 +5,8 @@ import UserRegistryABI from './Contract_ABI/UserRegistry.json';
 import PortFolioManagerABI from './Contract_ABI/PortFolioManager.json'
 import OceanQueryUpgradeableABI from './Contract_ABI/OceanQueryUpgradeableABI.json'
 import OceanViewUpgradeableABI from './Contract_ABI/OCEANVIEWUPGRADABLEABI.json'
-
+import SlabManagerABI from './Contract_ABI/SlabManager.json'
+import { dayShortFromUnix } from "../src/utils/helper";
 
 const Contract = {
   UserRegistry: "0x10C73CC0249b547402B0532c5c7D1fa52E09b16e",
@@ -296,9 +297,9 @@ export const useStore = create((set, get) => ({
       );
 
       // Fire all calls at once
-      const [safeWalletBalanceRaw, slabPanelRaw] = await Promise.all([
-        // oceanQuery.methods.getDirectReferralCount(userAddress).call({ from: userAddress }),
-        // <-- replace with your actual balance method:
+      const [accuredGrowth,safeWalletBalanceRaw, slabPanelRaw] = await Promise.all([
+
+        oceanQuery.methods.getAccruedGrowth(userAddress).call({ from: userAddress }),
         oceanQuery.methods.getSafeWalletBalance(userAddress).call({ from: userAddress }),
         oceanView.methods.getSlabPanel(userAddress).call({ from: userAddress }),
       ]);
@@ -311,18 +312,117 @@ export const useStore = create((set, get) => ({
         // directChildrenCount: toNum(referralCountRaw),
         safeWalletRAMAWei: toStr(safeWalletBalanceRaw), // keep as string/BigInt; format at render
         slabPanel: slabPanelRaw,                // map fields if needed
+        accuredGrowth
       };
 
     } catch (error) {
       console.log(error)
     }
-  }
+  },
 
+  get7DayEarningTrend: async (userAddress) => {
+    try {
+      if (!userAddress) return;
+
+      const oceanView = new web3.eth.Contract(
+        OceanViewUpgradeableABI,
+        Contract.OceanViewUpgradeable
+      );
+
+      // UNIX seconds
+      const nowSec = Math.floor(Date.now() / 1000)
+
+      // If your solidity fn signature is: getLast7DaysEarningsUSD(address user, uint256 startTs, uint256 endTs)
+      const Last7DaysEarning = await oceanView.methods.getLast7DaysEarningsUSD(userAddress, nowSec).call();
+
+      const formatedRecord = [0, 1, 2, 3, 4, 5, 6].map((val, index) => (
+        { day: dayShortFromUnix(Last7DaysEarning?.dayIds[index]), 'amount': parseInt(Last7DaysEarning?.usdAmounts[index] )}
+      ))
+
+      return formatedRecord;
+
+
+
+
+
+    } catch (error) {
+      console.log("get7DayEarningTrend error:", error);
+    }
+  },
+
+
+
+
+  // =====================================================================
+  // Slab Income 
+  // =====================================================================
+
+  getSlabLevel: async (userAddress) => {
+    try {
+      if (!userAddress) throw new Error("Missing user address");
+
+      const oceanQuery = new web3.eth.Contract(
+        OceanQueryUpgradeableABI,
+        Contract["OceanQueryUpgradeable"]
+      );
+
+      const slabLevel = await oceanQuery.methods.getCurrentSlabLevel(userAddress).call();
+      const OverrideEarnings = await oceanQuery.methods.getSameSlabOverrideEarnings(userAddress).call();
+      const getSameSlabPartner = await oceanQuery.methods.getSameSlabPartners(userAddress).call();
+
+      return {
+       slabLevel,
+       OverrideEarnings,
+       getSameSlabPartner
+      }
+
+    } catch (err) {
+      console.log(err)
+    }
+  },
 
 
   // =====================================================================
   // Portfolio 
   // =====================================================================
+
+
+  oneTimeRewardClaimed: async (userAddress) => {
+    try {
+      if (!userAddress) throw new Error("Missing user address");
+
+      const oceanQuery = new web3.eth.Contract(
+        OceanQueryUpgradeableABI,
+        Contract["OceanQueryUpgradeable"]
+      );
+      const slabManag = new web3.eth.Contract(
+        SlabManagerABI,
+        Contract["SlabManager"]
+      );
+
+      const rewardClaimed = await oceanQuery.methods.getTotalRewardsClaimed(userAddress).call();
+      const slabIncome = await oceanQuery.methods.getSlabIncome(userAddress).call();
+      const slabIncomeAvail = await oceanQuery.methods.getSlabIncomeAvailable(userAddress).call();
+
+
+      const slapIndex = await slabManag.methods.getSlabIndex(userAddress).call();
+
+
+
+      return {
+        rewardClaimed,
+        slabIncome,
+        slabIncomeAvail,
+
+        slapIndex,
+        slabName: slabsName[slapIndex]
+      }
+
+    } catch (err) {
+      console.log(err)
+    }
+  },
+
 
 
 
