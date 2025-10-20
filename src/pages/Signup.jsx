@@ -6,11 +6,12 @@ import { useStore } from '../../store/useUserInfoStore';
 import Swal from 'sweetalert2';
 import { useTransaction } from "../../config/register";
 import { useDisconnect, useWaitForTransactionReceipt } from "wagmi";
-// import { mockConnectWallet, registerUser } from '../utils/walletAuth';
 
 export default function Signup() {
   const navigate = useNavigate();
   const location = useLocation();
+
+
 
   const { disconnect, disconnectAsync } = useDisconnect();
 
@@ -20,6 +21,12 @@ export default function Signup() {
 
 
   const [portFolioAmt, setPortFolioAmt] = useState();
+  const [amtInUSD, setAmtInUsd] = useState(parseFloat(portFolioAmt?.portFolioAmtUsd) || 10)
+
+
+  const Tier = parseFloat(amtInUSD) >= 5001 ? 2 : 1
+
+
   const [UserValue, setUserValue] = useState();
   const { address, isConnected } = useAppKitAccount();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -121,7 +128,7 @@ export default function Signup() {
         setIsSubmitting(false);
         return; // stop here, do not build tx
       }
-      const response = await CreateportFolio(address, UserValue);
+      const response = await CreateportFolio(address, UserValue,amtInUSD);
 
       if (response) {
         setTrxData(response); // ✅ this triggers the useEffect
@@ -258,7 +265,7 @@ export default function Signup() {
                 <p className="text-sm text-cyan-300 font-mono truncate">{address?.slice(0, 8) + "..." + address?.slice(-7)}</p>
               </div>
 
-              <button onClick={()=>handleDisconnect()} className="flex-1 min-w-0 bg-red-500 rounded-xl">
+              <button onClick={() => handleDisconnect()} className="flex-1 min-w-0 bg-red-500 rounded-xl">
                 <p className='text-white py-2'>Disconnect</p>
               </button>
             </div>
@@ -310,18 +317,27 @@ export default function Signup() {
               {/* Body */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* USD */}
-                <div className="rounded-xl bg-slate-900/70 border border-cyan-500/20 p-4">
+                <div className="rounded-xl bg-slate-900/70 border border-cyan-500/20 py-4">
                   <p className="text-xs uppercase tracking-wide text-cyan-300/70 mb-1">Amount (USD)</p>
-                  {portFolioAmt?.portFolioAmtUsd != null ? (
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-2xl font-bold text-emerald-300">
-                        ${Number(portFolioAmt.portFolioAmtUsd).toFixed(2)}
-                      </span>
-                      <span className="text-[11px] text-cyan-300/60">fixed</span>
-                    </div>
-                  ) : (
-                    <div className="h-7 w-28 rounded bg-cyan-500/20 animate-pulse" />
-                  )}
+                  <input
+                    type="number"
+                    value={amtInUSD}
+                    inputMode="decimal"
+                    min={10}
+                    step="any"
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === "") return setAmtInUsd("");
+                      const n = Number(v);
+                      setAmtInUsd(Number.isFinite(n) && n >= 0 ? v : "0");
+                    }}
+                    onKeyDown={(e) => {
+                      if (["e", "E", "+", "-"].includes(e.key)) e.preventDefault();
+                    }}
+                    placeholder="0.00"
+                    className="w-full pl-12 pr-4 py-3 sm:py-4 bg-dark-900/50 border border-cyan-500/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-cyan-300 placeholder-cyan-400/30 transition-all text-lg"
+
+                  />
                 </div>
 
                 {/* RAMA */}
@@ -330,13 +346,13 @@ export default function Signup() {
                   {portFolioAmt?.ramaAmt ? (
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-2xl font-bold text-cyan-200">
-                        {portFolioAmt.ramaAmt} <span className="text-base font-medium opacity-80">RAMA</span>
+                        {(parseFloat(portFolioAmt.ramaAmt) * amtInUSD).toFixed(2)} <span className="text-base font-medium opacity-80">RAMA</span>
                       </span>
                       <button
                         type="button"
                         onClick={async () => {
                           try {
-                            await navigator.clipboard.writeText(`${portFolioAmt.ramaAmt} RAMA`);
+                            await navigator.clipboard.writeText(`${amtInUSD === NaN ? 0 : (parseFloat(portFolioAmt.ramaAmt) * amtInUSD).toFixed(2)} RAMA`);
                           } catch { }
                         }}
                         className="px-2 py-1 text-xs rounded border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/10 transition"
@@ -349,6 +365,14 @@ export default function Signup() {
                   )}
                 </div>
               </div>
+
+
+              <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-900/10 px-3 py-1 text-[11px] font-medium text-cyan-200/90 shadow-[0_0_20px_-8px_rgba(34,211,238,0.6)] backdrop-blur">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-cyan-400/90"></span>
+                <span className="uppercase tracking-wide">Current Tier</span>
+                <span className="ml-1 rounded-full bg-cyan-400/10 px-2 py-[2px] text-cyan-300">{Tier}</span>
+              </div>
+
 
               {/* Footnote */}
               <div className="mt-4 text-xs text-cyan-300/70">

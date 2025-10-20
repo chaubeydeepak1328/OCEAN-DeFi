@@ -240,7 +240,7 @@ export const useStore = create((set, get) => ({
 
       const ArrPortfolio = await contract.methods.portfoliosOf(userAddress).call();
 
-      console.log("=====>",ArrPortfolio)
+      console.log("=====>", ArrPortfolio)
 
       let ProtFolioDetail;
       if (ArrPortfolio.length > 0) {
@@ -258,7 +258,7 @@ export const useStore = create((set, get) => ({
   },
 
   getPortFoliById: async (portId) => {
-    console.log("port id is",portId)
+    console.log("port id is", portId)
     try {
       if (!portId) {
         return;
@@ -287,7 +287,7 @@ export const useStore = create((set, get) => ({
         Contract["OceanViewUpgradeable"]
       );
 
-      
+
 
       // Fire all calls at once
       const [accuredGrowth, safeWalletBalanceRaw, slabPanelRaw] = await Promise.all([
@@ -440,7 +440,7 @@ export const useStore = create((set, get) => ({
     }
   },
 
-  CreateportFolio: async (userAddress, sponsorInput) => {
+  CreateportFolio: async (userAddress, sponsorInput,amt=10) => {
     console.log('CreateportFolio args:', userAddress, sponsorInput);
     try {
       if (!userAddress || typeof userAddress !== 'string' || !userAddress.startsWith('0x')) {
@@ -469,19 +469,17 @@ export const useStore = create((set, get) => ({
       }
 
       // --- 1) Quote RAMA for $10 (micro-USD, 1e6)
-      const usdMicro = 10 * 1e6; // $10 -> 10,000,000 micro-USD
+      const usdMicro = amt * 1e6; // $10 -> 10,000,000 micro-USD
       const ramaWeiQuoteStr = await pm.methods
         .getPackageValueInRAMA(usdMicro.toString())
         .call();
 
-      const ramaWei = parseInt(ramaWeiQuoteStr);
-      if (ramaWei <= 0) throw new Error('Invalid RAMA quote (0)');
+      const valueToSend = parseInt(ramaWeiQuoteStr);
+      if (valueToSend <= 0) throw new Error('Invalid RAMA quote (0)');
 
-      // Optional: +0.5% tolerance for price movement (keep in sync with contract checks)
-      const tol = ramaWei / 200; // 0.5%
-      const valueToSend = (ramaWei + tol).toString();
 
-      console.log(sponsorAddress, valueToSend.toString(), ramaWei)
+
+      console.log(sponsorAddress, valueToSend.toString(), valueToSend)
 
       // --- 2) Build tx: createPortfolio(usdAmountMicro, referrer) PAYABLE
       const data = pm.methods
