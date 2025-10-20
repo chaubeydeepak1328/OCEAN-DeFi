@@ -303,7 +303,7 @@ export const useStore = create((set, get) => ({
 
       return {
         // directChildrenCount: toNum(referralCountRaw),
-        safeWalletRAMAWei: toStr(safeWalletBalanceRaw), // keep as string/BigInt; format at render
+        safeWalletRAMAWei: parseFloat(safeWalletBalanceRaw)/1e6, // keep as string/BigInt; format at render
         slabPanel: slabPanelRaw,                // map fields if needed
         accuredGrowth
       };
@@ -637,8 +637,10 @@ export const useStore = create((set, get) => ({
         Contract["OceanQueryUpgradeable"]
       );
 
-      const safeWalletBalanceRaw = await oceanQuery.methods.getSafeWalletBalance(userAddress).call({ from: userAddress })
-      const SafeWalletFund = parseFloat(safeWalletBalanceRaw);
+      const safeWalletBalanceRaw = await oceanQuery.methods.getSafeWalletBalance(userAddress).call()
+      const SafeWalletFund = parseFloat(safeWalletBalanceRaw)/1e6;
+
+      console.log("safe Wallet fund",SafeWalletFund)
 
       return SafeWalletFund
 
@@ -648,7 +650,6 @@ export const useStore = create((set, get) => ({
       throw error;
     }
   },
-
 
   usdToRama: async (amt) => {
     try {

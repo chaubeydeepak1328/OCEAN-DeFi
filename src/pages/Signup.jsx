@@ -352,7 +352,7 @@ export default function Signup() {
                         type="button"
                         onClick={async () => {
                           try {
-                            await navigator.clipboard.writeText(`${amtInUSD === NaN ? 0 : (parseFloat(portFolioAmt.ramaAmt) * amtInUSD).toFixed(2)} RAMA`);
+                            await navigator.clipboard.writeText(`${(parseFloat(portFolioAmt.ramaAmt) * amtInUSD).toFixed(2)} RAMA`);
                           } catch { }
                         }}
                         className="px-2 py-1 text-xs rounded border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/10 transition"
