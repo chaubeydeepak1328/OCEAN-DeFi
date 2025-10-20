@@ -9,20 +9,20 @@ import SlabManagerABI from './Contract_ABI/SlabManager.json'
 import { dayShortFromUnix } from "../src/utils/helper";
 
 const Contract = {
-  UserRegistry: "0x10C73CC0249b547402B0532c5c7D1fa52E09b16e",
-  CoreConfig: "0xf2Da545c361c42FC540f3F648034448CC64D6b04",
-  RoiDistribution: "0x3E69b6b118D1B0c1fb4B8Fe79F32CFBd8C4bC39d",
-  PortFolioManager: "0xd5EE95aa4124EF58907085689E7c50d6133e061F",
-  RoyaltyManager: "0xC477e36c84ae51586c01E3bb79fDC44E919Ecf27",
-  SlabManager: "0x2182fcA6577A678D6ea691faA0b2Ea8Bea5A0299",
-  IncomeDistributor: "0x35785f01c35Bae437Ba091138889E35923E5fd22",
+  UserRegistry: "0x71Ce2E2Af312e856b17d901aCDbE4ea39831C961",
+  CoreConfig: "0x88feEF32db83e79BbD69c222851e45cD681D6a62",
+  RoiDistribution: "0xc7CC6f2C738646472E8bfF6d7BDFB2A82e70bafd",
+  PortFolioManager: "0x09759B02B87927DB3BABc85aE7AE0f1F70C9a604",
+  RoyaltyManager: "0xB953ccFe1d34BB413A0A7000259708E1ef3ca8d3",
+  SlabManager: "0x631a0381473f9bC9B43Df75D67fd36E6bd3E3685",
+  IncomeDistributor: "0x7d9666a5230E64B24d940F89d7eb46F1Bc5C519F",
   FreezePolicy: "0xDd09016976B8B5F550984c4B4E1FEAe4B30536e5",
-  RewardVault: "0x7c7426325f9334EDBE57BD74b1ac606594d454C5",
+  RewardVault: "0x6D96990EBF016d51e9399fE48C770c3336437Dc8",
   AdminControl: "0xcD8eB92E927Aa9C0DC5e58d8383D4aE211F73f96",
   MainWallet: "0x61d66989f2fA03818Fcf2f4dCb586C17D4fa9c47",
-  SafeWallet: "0x6a4a05431A5826fa35A2e9535Da662f47189232f",
+  SafeWallet: "0x58514DE6CCd50CF33d2bD90547847E212Ae93f11",
   OceanViewUpgradeable: "0x449E6d26f1a65E991e129f5320d65a62C896aA8a",
-  OceanQueryUpgradeable: "0x4A3f63Cc3B20dB20E8dCd42daAd1846374B10cCa",
+  OceanQueryUpgradeable: "0x9F992D83Cbfc6BAb84749EBE9Bd90Bc8b51851b9",
 };
 
 const INFURA_URL = "https://blockchain.ramestta.com";
@@ -42,17 +42,6 @@ const readLocalJSON = (key) => {
 
 
 const slabsName = ["None", "Coral Reef", "Shallow Waters", "Tide Pool", "Wave Crest", 'Open Sea', "Deep Current", "Ocean Floor", "Abyssal Zone", "Mariana Trench", "Pacific Master", "Ocean Sovereign"]
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -251,6 +240,8 @@ export const useStore = create((set, get) => ({
 
       const ArrPortfolio = await contract.methods.portfoliosOf(userAddress).call();
 
+      console.log("=====>",ArrPortfolio)
+
       let ProtFolioDetail;
       if (ArrPortfolio.length > 0) {
         ProtFolioDetail = await contract1.methods.getPortfolioDetails(ArrPortfolio[0]).call();
@@ -267,7 +258,7 @@ export const useStore = create((set, get) => ({
   },
 
   getPortFoliById: async (portId) => {
-    console.log(portId)
+    console.log("port id is",portId)
     try {
       if (!portId) {
         return;
@@ -295,6 +286,8 @@ export const useStore = create((set, get) => ({
         OceanViewUpgradeableABI,
         Contract["OceanViewUpgradeable"]
       );
+
+      
 
       // Fire all calls at once
       const [accuredGrowth, safeWalletBalanceRaw, slabPanelRaw] = await Promise.all([
@@ -653,7 +646,7 @@ export const useStore = create((set, get) => ({
 
     } catch (error) {
       console.error('InvestInPortFolio error:', error);
-      Swal.fire({ icon: 'error', title: 'Portfolio creation error', text: error?.message || 'Unknown error' });
+      Swal.fire({ icon: 'error', title: 'GetchStakeInvest error', text: error?.message || 'Unknown error' });
       throw error;
     }
   },

@@ -30,7 +30,7 @@ const menuSections = [
     items: [
       { path: '/dashboard/team', label: 'Team Network', icon: Users },
       { path: '/dashboard/safe-wallet', label: 'Safe Wallet', icon: Vault },
-      { path: '/dashboard/transaction-history', label: 'Transaction History', icon: History },
+      { path: '/dashboard/transaction-history', label: 'Income & Trx History', icon: History },
     ],
   },
   {

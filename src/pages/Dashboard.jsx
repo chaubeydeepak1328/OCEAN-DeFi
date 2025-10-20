@@ -41,7 +41,7 @@ export default function Dashboard() {
     try {
       console.log(userAddress)
       const res = await getTOtalPortFolio(userAddress);
-      console.log(res)
+      console.log("-------------->$%^&*(",userAddress,res)
       setPortFolioId(res?.ArrPortfolio?.map(Number) || [])
       setFortFolioDetails(res?.ProtFolioDetail)
     } catch (error) {
@@ -97,7 +97,7 @@ export default function Dashboard() {
   }
 
   useEffect(() => {
-    if (selectedPid) {
+    if (selectedPid&&portfolioIds.length>0) {
       GetPortFolioById()
     }
   }, [selectedPid])

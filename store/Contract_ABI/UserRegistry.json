@@ -102,6 +102,19 @@
     "type": "event"
   },
   {
+    "inputs": [],
+    "name": "cfg",
+    "outputs": [
+      {
+        "internalType": "contract ICoreConfig",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "address",
@@ -494,6 +507,11 @@
         "internalType": "address",
         "name": "_root",
         "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_cfg",
+        "type": "address"
       }
     ],
     "name": "initialize",
@@ -572,6 +590,19 @@
   },
   {
     "inputs": [],
+    "name": "pm",
+    "outputs": [
+      {
+        "internalType": "contract IPortfolioManager",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "proxiableUUID",
     "outputs": [
       {
@@ -588,6 +619,11 @@
       {
         "internalType": "address",
         "name": "referrer",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "toBeRegsiteredUser",
         "type": "address"
       }
     ],
@@ -620,6 +656,32 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_cfg",
+        "type": "address"
+      }
+    ],
+    "name": "setCongig",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_pm",
+        "type": "address"
+      }
+    ],
+    "name": "setPortfolioManager",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {

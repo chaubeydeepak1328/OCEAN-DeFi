@@ -189,6 +189,11 @@
                 "type": "uint256"
             },
             {
+                "internalType": "uint256",
+                "name": "amountInUSD",
+                "type": "uint256"
+            },
+            {
                 "internalType": "uint8",
                 "name": "tierIdx",
                 "type": "uint8"
@@ -369,6 +374,25 @@
     {
         "inputs": [
             {
+                "internalType": "uint256",
+                "name": "idx",
+                "type": "uint256"
+            }
+        ],
+        "name": "salaryUSD",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
                 "internalType": "uint64",
                 "name": "monthId",
                 "type": "uint64"
@@ -445,6 +469,25 @@
             }
         ],
         "name": "tNowCache",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "idx",
+                "type": "uint256"
+            }
+        ],
+        "name": "thresholdUSD",
         "outputs": [
             {
                 "internalType": "uint256",

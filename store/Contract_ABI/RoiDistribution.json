@@ -36,18 +36,79 @@
         "inputs": [
             {
                 "indexed": true,
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            },
+            {
+                "indexed": true,
                 "internalType": "uint32",
-                "name": "dayId",
+                "name": "fromDay",
+                "type": "uint32"
+            },
+            {
+                "indexed": true,
+                "internalType": "uint32",
+                "name": "toDay",
                 "type": "uint32"
             },
             {
                 "indexed": false,
                 "internalType": "uint256",
-                "name": "priceWad",
+                "name": "usdTotal",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "ramaTotal",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint32",
+                "name": "epoch",
+                "type": "uint32"
+            }
+        ],
+        "name": "ClaimedROI",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "internalType": "uint32",
+                "name": "epoch",
+                "type": "uint32"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "pid",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "usdTotal",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "ramaTotal",
                 "type": "uint256"
             }
         ],
-        "name": "DayPriceSet",
+        "name": "ClaimedROIByPortfolio",
         "type": "event"
     },
     {
@@ -86,92 +147,6 @@
         "anonymous": false,
         "inputs": [
             {
-                "indexed": false,
-                "internalType": "uint256",
-                "name": "r0",
-                "type": "uint256"
-            },
-            {
-                "indexed": false,
-                "internalType": "uint256",
-                "name": "r1",
-                "type": "uint256"
-            },
-            {
-                "indexed": false,
-                "internalType": "uint256",
-                "name": "rb0",
-                "type": "uint256"
-            },
-            {
-                "indexed": false,
-                "internalType": "uint256",
-                "name": "rb1",
-                "type": "uint256"
-            }
-        ],
-        "name": "RatesUpdated",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [
-            {
-                "indexed": true,
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            },
-            {
-                "indexed": true,
-                "internalType": "uint256",
-                "name": "pid",
-                "type": "uint256"
-            },
-            {
-                "indexed": true,
-                "internalType": "uint32",
-                "name": "dayId",
-                "type": "uint32"
-            },
-            {
-                "indexed": false,
-                "internalType": "uint256",
-                "name": "usdAmount",
-                "type": "uint256"
-            },
-            {
-                "indexed": false,
-                "internalType": "uint256",
-                "name": "ramaAmount",
-                "type": "uint256"
-            },
-            {
-                "indexed": false,
-                "internalType": "uint256",
-                "name": "priceWad",
-                "type": "uint256"
-            },
-            {
-                "indexed": false,
-                "internalType": "bool",
-                "name": "booster",
-                "type": "bool"
-            },
-            {
-                "indexed": false,
-                "internalType": "uint8",
-                "name": "tier",
-                "type": "uint8"
-            }
-        ],
-        "name": "RoiPaid",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [
-            {
                 "indexed": true,
                 "internalType": "address",
                 "name": "implementation",
@@ -180,6 +155,74 @@
         ],
         "name": "Upgraded",
         "type": "event"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "pid",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint32",
+                "name": "fromDay",
+                "type": "uint32"
+            },
+            {
+                "internalType": "uint32",
+                "name": "toDay",
+                "type": "uint32"
+            }
+        ],
+        "name": "ROIForAPortfolio",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "usdTotal",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "ramaTotal",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            },
+            {
+                "internalType": "uint32",
+                "name": "fromDay",
+                "type": "uint32"
+            },
+            {
+                "internalType": "uint32",
+                "name": "toDay",
+                "type": "uint32"
+            }
+        ],
+        "name": "ROIForBoosterPortfolios",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "usdTotal",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "ramaTotal",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
     },
     {
         "inputs": [],
@@ -196,15 +239,9 @@
     },
     {
         "inputs": [],
-        "name": "currentDayId",
-        "outputs": [
-            {
-                "internalType": "uint32",
-                "name": "",
-                "type": "uint32"
-            }
-        ],
-        "stateMutability": "view",
+        "name": "claimROI",
+        "outputs": [],
+        "stateMutability": "nonpayable",
         "type": "function"
     },
     {
@@ -262,26 +299,16 @@
     {
         "inputs": [
             {
-                "internalType": "uint32",
-                "name": "",
-                "type": "uint32"
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
             }
         ],
-        "name": "daySnapshot",
+        "name": "getClaimHistoryCount",
         "outputs": [
             {
                 "internalType": "uint256",
-                "name": "priceWad",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "totalUsdPaid",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "totalRamaPaid",
+                "name": "",
                 "type": "uint256"
             }
         ],
@@ -291,19 +318,180 @@
     {
         "inputs": [
             {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "offset",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "limit",
+                "type": "uint256"
+            }
+        ],
+        "name": "getClaimHistorySlice",
+        "outputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "uint32",
+                        "name": "fromDay",
+                        "type": "uint32"
+                    },
+                    {
+                        "internalType": "uint32",
+                        "name": "toDay",
+                        "type": "uint32"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "usdTotal",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "ramaTotal",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint64",
+                        "name": "claimedAt",
+                        "type": "uint64"
+                    },
+                    {
+                        "internalType": "uint32",
+                        "name": "epoch",
+                        "type": "uint32"
+                    }
+                ],
+                "internalType": "struct ROIDistributor.ClaimRec[]",
+                "name": "out",
+                "type": "tuple[]"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            }
+        ],
+        "name": "getLastClaimedDay",
+        "outputs": [
+            {
                 "internalType": "uint32",
-                "name": "dayId",
+                "name": "",
+                "type": "uint32"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            },
+            {
+                "internalType": "uint32",
+                "name": "epoch",
+                "type": "uint32"
+            }
+        ],
+        "name": "getPidClaimsCount",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            },
+            {
+                "internalType": "uint32",
+                "name": "epoch",
                 "type": "uint32"
             },
             {
-                "internalType": "uint256[]",
-                "name": "pids",
-                "type": "uint256[]"
+                "internalType": "uint256",
+                "name": "offset",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "limit",
+                "type": "uint256"
             }
         ],
-        "name": "distributeDay",
-        "outputs": [],
-        "stateMutability": "nonpayable",
+        "name": "getPidClaimsSlice",
+        "outputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "uint256",
+                        "name": "pid",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "usdTotal",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "ramaTotal",
+                        "type": "uint256"
+                    }
+                ],
+                "internalType": "struct ROIDistributor.PidClaim[]",
+                "name": "out",
+                "type": "tuple[]"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            }
+        ],
+        "name": "getTotalsClaimed",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
         "type": "function"
     },
     {
@@ -311,6 +499,11 @@
             {
                 "internalType": "address",
                 "name": "_cfg",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "_oracle",
                 "type": "address"
             }
         ],
@@ -322,17 +515,43 @@
     {
         "inputs": [
             {
-                "internalType": "uint256",
+                "internalType": "address",
                 "name": "",
-                "type": "uint256"
+                "type": "address"
             }
         ],
-        "name": "lastPaidDay",
+        "name": "lastClaimDay",
         "outputs": [
             {
                 "internalType": "uint32",
                 "name": "",
                 "type": "uint32"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "maxDaysPerClaim",
+        "outputs": [
+            {
+                "internalType": "uint32",
+                "name": "",
+                "type": "uint32"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "oracle",
+        "outputs": [
+            {
+                "internalType": "contract IPriceOracleDaily",
+                "name": "",
+                "type": "address"
             }
         ],
         "stateMutability": "view",
@@ -346,6 +565,64 @@
                 "internalType": "address",
                 "name": "",
                 "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "name": "paidUsdByPid",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            },
+            {
+                "internalType": "uint32",
+                "name": "fromDay",
+                "type": "uint32"
+            },
+            {
+                "internalType": "uint32",
+                "name": "toDay",
+                "type": "uint32"
+            }
+        ],
+        "name": "perDayPreview",
+        "outputs": [
+            {
+                "internalType": "uint32[]",
+                "name": "dayIds",
+                "type": "uint32[]"
+            },
+            {
+                "internalType": "uint256[]",
+                "name": "usdPerDay",
+                "type": "uint256[]"
+            },
+            {
+                "internalType": "uint256[]",
+                "name": "ramaPerDay",
+                "type": "uint256[]"
             }
         ],
         "stateMutability": "view",
@@ -367,17 +644,37 @@
     {
         "inputs": [
             {
-                "internalType": "uint32",
-                "name": "",
-                "type": "uint32"
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
             }
         ],
-        "name": "priceWadOfDay",
+        "name": "previewClaimPerPortfolio",
         "outputs": [
             {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
+                "internalType": "uint256[]",
+                "name": "pids",
+                "type": "uint256[]"
+            },
+            {
+                "internalType": "uint256[]",
+                "name": "usdTotals",
+                "type": "uint256[]"
+            },
+            {
+                "internalType": "uint256[]",
+                "name": "ramaTotals",
+                "type": "uint256[]"
+            },
+            {
+                "internalType": "uint32",
+                "name": "fromDay",
+                "type": "uint32"
+            },
+            {
+                "internalType": "uint32",
+                "name": "lastDay",
+                "type": "uint32"
             }
         ],
         "stateMutability": "view",
@@ -407,16 +704,24 @@
         "inputs": [
             {
                 "internalType": "uint32",
-                "name": "dayId",
+                "name": "maxDays_",
                 "type": "uint32"
-            },
-            {
-                "internalType": "uint256",
-                "name": "priceWad",
-                "type": "uint256"
             }
         ],
-        "name": "setDayPrice",
+        "name": "setMaxDaysPerClaim",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "a",
+                "type": "address"
+            }
+        ],
+        "name": "setOracle",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -425,28 +730,66 @@
         "inputs": [
             {
                 "internalType": "uint256",
-                "name": "r0",
+                "name": "t0",
                 "type": "uint256"
             },
             {
                 "internalType": "uint256",
-                "name": "r1",
+                "name": "t1",
                 "type": "uint256"
             },
             {
                 "internalType": "uint256",
-                "name": "rb0",
+                "name": "b0",
                 "type": "uint256"
             },
             {
                 "internalType": "uint256",
-                "name": "rb1",
+                "name": "b1",
                 "type": "uint256"
             }
         ],
         "name": "setRates",
         "outputs": [],
         "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "name": "totalClaimedRama",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "name": "totalClaimedUsd",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
         "type": "function"
     },
     {
@@ -501,17 +844,25 @@
                 "type": "address"
             }
         ],
-        "name": "userTotals",
+        "name": "userClaimEpoch",
         "outputs": [
             {
-                "internalType": "uint256",
-                "name": "totalUsd",
-                "type": "uint256"
-            },
+                "internalType": "uint32",
+                "name": "",
+                "type": "uint32"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "users",
+        "outputs": [
             {
-                "internalType": "uint256",
-                "name": "totalRama",
-                "type": "uint256"
+                "internalType": "contract IUserRegistry",
+                "name": "",
+                "type": "address"
             }
         ],
         "stateMutability": "view",

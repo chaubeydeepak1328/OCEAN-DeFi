@@ -94,6 +94,67 @@
             {
                 "indexed": true,
                 "internalType": "address",
+                "name": "user",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint8",
+                "name": "kind",
+                "type": "uint8"
+            },
+            {
+                "indexed": false,
+                "internalType": "bool",
+                "name": "isCredit",
+                "type": "bool"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "usdAmount",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "ramaAmount",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint32",
+                "name": "dayId",
+                "type": "uint32"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "related",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "pid",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "bytes32",
+                "name": "memo",
+                "type": "bytes32"
+            }
+        ],
+        "name": "LedgerRecorded",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
                 "name": "previousOwner",
                 "type": "address"
             },
@@ -165,6 +226,25 @@
         "type": "function"
     },
     {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            }
+        ],
+        "name": "balanceOf",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
         "inputs": [],
         "name": "cfg",
         "outputs": [
@@ -175,6 +255,123 @@
             }
         ],
         "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "to",
+                "type": "address"
+            }
+        ],
+        "name": "claimAllTo",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+            },
+            {
+                "internalType": "address",
+                "name": "to",
+                "type": "address"
+            }
+        ],
+        "name": "claimToExternal",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "beneficiary",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "ramaAmount",
+                "type": "uint256"
+            },
+            {
+                "internalType": "address",
+                "name": "referrer",
+                "type": "address"
+            }
+        ],
+        "name": "createPortfolioFor",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "pid",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "ramaAmount",
+                "type": "uint256"
+            },
+            {
+                "internalType": "address",
+                "name": "referrer",
+                "type": "address"
+            }
+        ],
+        "name": "createPortfolioFromSafe",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "pid",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            },
+            {
+                "internalType": "enum SafeWallet.TxKind",
+                "name": "kind",
+                "type": "uint8"
+            },
+            {
+                "internalType": "uint256",
+                "name": "usdAmount",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "ramaAmount",
+                "type": "uint256"
+            },
+            {
+                "internalType": "bytes32",
+                "name": "memo",
+                "type": "bytes32"
+            }
+        ],
+        "name": "creditGeneral",
+        "outputs": [],
+        "stateMutability": "nonpayable",
         "type": "function"
     },
     {
@@ -226,6 +423,34 @@
     {
         "inputs": [
             {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            },
+            {
+                "internalType": "uint32[]",
+                "name": "dayIds",
+                "type": "uint32[]"
+            },
+            {
+                "internalType": "uint256[]",
+                "name": "usdAmounts",
+                "type": "uint256[]"
+            },
+            {
+                "internalType": "uint256[]",
+                "name": "ramaAmounts",
+                "type": "uint256[]"
+            }
+        ],
+        "name": "creditROIUSDBatch",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
                 "internalType": "uint32",
                 "name": "",
                 "type": "uint32"
@@ -255,6 +480,438 @@
             {
                 "internalType": "uint256",
                 "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint32",
+                "name": "dayId",
+                "type": "uint32"
+            }
+        ],
+        "name": "getDayTotals",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "usdTotal_",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "ramaTotal_",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "limit",
+                "type": "uint256"
+            }
+        ],
+        "name": "getLastTransactions",
+        "outputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "uint8",
+                        "name": "kind",
+                        "type": "uint8"
+                    },
+                    {
+                        "internalType": "bool",
+                        "name": "isCredit",
+                        "type": "bool"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "usdAmount",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "ramaAmount",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint32",
+                        "name": "dayId",
+                        "type": "uint32"
+                    },
+                    {
+                        "internalType": "uint64",
+                        "name": "timestamp",
+                        "type": "uint64"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "related",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "pid",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "bytes32",
+                        "name": "memo",
+                        "type": "bytes32"
+                    }
+                ],
+                "internalType": "struct SafeWallet.LedgerEntry[]",
+                "name": "out",
+                "type": "tuple[]"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            }
+        ],
+        "name": "getLedgerCount",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "offset",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "limit",
+                "type": "uint256"
+            }
+        ],
+        "name": "getLedgerSlice",
+        "outputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "uint8",
+                        "name": "kind",
+                        "type": "uint8"
+                    },
+                    {
+                        "internalType": "bool",
+                        "name": "isCredit",
+                        "type": "bool"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "usdAmount",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "ramaAmount",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint32",
+                        "name": "dayId",
+                        "type": "uint32"
+                    },
+                    {
+                        "internalType": "uint64",
+                        "name": "timestamp",
+                        "type": "uint64"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "related",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "pid",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "bytes32",
+                        "name": "memo",
+                        "type": "bytes32"
+                    }
+                ],
+                "internalType": "struct SafeWallet.LedgerEntry[]",
+                "name": "out",
+                "type": "tuple[]"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            }
+        ],
+        "name": "getTotals",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "_ramaBalance",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "_roiUsdPaid",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "_totalCreditsUSD",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "_totalCreditsRAMA",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "_totalDebitsUSD",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "_totalDebitsRAMA",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            },
+            {
+                "internalType": "uint8",
+                "name": "kind",
+                "type": "uint8"
+            },
+            {
+                "internalType": "bool",
+                "name": "isCredit",
+                "type": "bool"
+            }
+        ],
+        "name": "getTotalsByKind",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "usdSum",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "ramaSum",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "count",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            },
+            {
+                "internalType": "uint64",
+                "name": "sinceTs",
+                "type": "uint64"
+            },
+            {
+                "internalType": "bool",
+                "name": "creditSide",
+                "type": "bool"
+            }
+        ],
+        "name": "getTotalsSince",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "usdSum",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "ramaSum",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "count",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            },
+            {
+                "internalType": "uint8",
+                "name": "kind",
+                "type": "uint8"
+            },
+            {
+                "internalType": "bool",
+                "name": "isCredit",
+                "type": "bool"
+            },
+            {
+                "internalType": "uint256",
+                "name": "offset",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "limit",
+                "type": "uint256"
+            }
+        ],
+        "name": "getTransactionsByKind",
+        "outputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "uint8",
+                        "name": "kind",
+                        "type": "uint8"
+                    },
+                    {
+                        "internalType": "bool",
+                        "name": "isCredit",
+                        "type": "bool"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "usdAmount",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "ramaAmount",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint32",
+                        "name": "dayId",
+                        "type": "uint32"
+                    },
+                    {
+                        "internalType": "uint64",
+                        "name": "timestamp",
+                        "type": "uint64"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "related",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "pid",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "bytes32",
+                        "name": "memo",
+                        "type": "bytes32"
+                    }
+                ],
+                "internalType": "struct SafeWallet.LedgerEntry[]",
+                "name": "slice",
+                "type": "tuple[]"
+            },
+            {
+                "internalType": "uint256",
+                "name": "totalMatched",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            },
+            {
+                "internalType": "uint32",
+                "name": "dayId",
+                "type": "uint32"
+            }
+        ],
+        "name": "getUserRoiForDay",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "usdSum",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "ramaSum",
                 "type": "uint256"
             }
         ],
@@ -362,23 +1019,117 @@
         "inputs": [
             {
                 "internalType": "address",
-                "name": "user",
+                "name": "beneficiary",
                 "type": "address"
             },
             {
                 "internalType": "uint256",
-                "name": "amount",
+                "name": "pid",
                 "type": "uint256"
             },
             {
+                "internalType": "uint256",
+                "name": "ramaAmount",
+                "type": "uint256"
+            }
+        ],
+        "name": "topUpPortfolioFor",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "pid",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "ramaAmount",
+                "type": "uint256"
+            }
+        ],
+        "name": "topUpPortfolioFromSafe",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
                 "internalType": "address",
-                "name": "to",
+                "name": "",
                 "type": "address"
             }
         ],
-        "name": "spendForStake",
-        "outputs": [],
-        "stateMutability": "nonpayable",
+        "name": "totalCreditsRAMA",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "name": "totalCreditsUSD",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "name": "totalDebitsRAMA",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "name": "totalDebitsUSD",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
         "type": "function"
     },
     {

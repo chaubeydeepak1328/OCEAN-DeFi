@@ -37,7 +37,7 @@
             {
                 "indexed": true,
                 "internalType": "address",
-                "name": "earner",
+                "name": "receiver",
                 "type": "address"
             },
             {
@@ -47,19 +47,37 @@
                 "type": "address"
             },
             {
-                "indexed": false,
+                "indexed": true,
                 "internalType": "uint256",
-                "name": "ramaAmount",
+                "name": "portfolioId",
                 "type": "uint256"
             },
             {
                 "indexed": false,
                 "internalType": "uint256",
-                "name": "credited",
+                "name": "amountUsd",
                 "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "amountRama",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint32",
+                "name": "dayId",
+                "type": "uint32"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint64",
+                "name": "timestamp",
+                "type": "uint64"
             }
         ],
-        "name": "DirectIncome",
+        "name": "DirectIncomeRecorded",
         "type": "event"
     },
     {
@@ -155,24 +173,273 @@
     {
         "inputs": [
             {
-                "internalType": "address",
-                "name": "direct",
-                "type": "address"
-            },
+                "internalType": "address[]",
+                "name": "addrs",
+                "type": "address[]"
+            }
+        ],
+        "name": "getDirectIncome",
+        "outputs": [
+            {
+                "internalType": "uint256[]",
+                "name": "",
+                "type": "uint256[]"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
             {
                 "internalType": "address",
-                "name": "referrer",
+                "name": "user",
                 "type": "address"
             },
             {
                 "internalType": "uint256",
-                "name": "stakeRama",
+                "name": "index",
                 "type": "uint256"
             }
         ],
-        "name": "handleDirectIncome",
-        "outputs": [],
-        "stateMutability": "nonpayable",
+        "name": "getDirectIncomeByIndex",
+        "outputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "address",
+                        "name": "receiver",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "receivedFrom",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "amountUsd",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "amountRama",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "portfolioId",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint64",
+                        "name": "timestamp",
+                        "type": "uint64"
+                    },
+                    {
+                        "internalType": "uint32",
+                        "name": "dayId",
+                        "type": "uint32"
+                    }
+                ],
+                "internalType": "struct IncomeDistributor.DirectIncomeRec",
+                "name": "rec",
+                "type": "tuple"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            }
+        ],
+        "name": "getDirectIncomeCount",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "offset",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "limit",
+                "type": "uint256"
+            }
+        ],
+        "name": "getDirectIncomeSlice",
+        "outputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "address",
+                        "name": "receiver",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "receivedFrom",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "amountUsd",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "amountRama",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "portfolioId",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint64",
+                        "name": "timestamp",
+                        "type": "uint64"
+                    },
+                    {
+                        "internalType": "uint32",
+                        "name": "dayId",
+                        "type": "uint32"
+                    }
+                ],
+                "internalType": "struct IncomeDistributor.DirectIncomeRec[]",
+                "name": "out",
+                "type": "tuple[]"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            }
+        ],
+        "name": "getDirectIncomeSummary",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "entries",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "lifetimeUsd",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "lifetimeRama",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "claimableRama",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "portfolioId",
+                "type": "uint256"
+            }
+        ],
+        "name": "getDirectIncomeTotalsByPortfolio",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "usdSum",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "ramaSum",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "count",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            },
+            {
+                "internalType": "uint64",
+                "name": "fromTs",
+                "type": "uint64"
+            },
+            {
+                "internalType": "uint64",
+                "name": "toTs",
+                "type": "uint64"
+            }
+        ],
+        "name": "getDirectIncomeTotalsInRange",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "usdSum",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "ramaSum",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "count",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
         "type": "function"
     },
     {
@@ -215,10 +482,81 @@
         "type": "function"
     },
     {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "receiver",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "receivedFrom",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "amountUsd",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "amountRama",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "portfolioId",
+                "type": "uint256"
+            }
+        ],
+        "name": "recordDirectIncome",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
         "inputs": [],
         "name": "renounceOwnership",
         "outputs": [],
         "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "name": "totalDirectRama",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "name": "totalDirectUsd",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
         "type": "function"
     },
     {
