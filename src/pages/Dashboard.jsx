@@ -2,25 +2,21 @@
 import { useEffect, useMemo, useState } from 'react';
 import { TrendingUp, Wallet, Users, Award, DollarSign, Clock, Zap, Gift, Trophy, ArrowUpRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { getMockPortfolioDetails, getMockUserStatus, formatUSD, formatRAMA } from '../utils/contractData';
+import { formatUSD, formatRAMA } from '../utils/contractData';
 import NumberPopup from '../components/NumberPopup';
 import LivePriceFeed from '../components/LivePriceFeed';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useStore } from '../../store/useUserInfoStore';
 
-const quickEarningsData = [
-  { day: 'Mon', amount: 18 },
-  { day: 'Tue', amount: 22 },
-  { day: 'Wed', amount: 28 },
-  { day: 'Thu', amount: 25 },
-  { day: 'Fri', amount: 30 },
-  { day: 'Sat', amount: 32 },
-  { day: 'Sun', amount: 28 },
-];
+
 
 export default function Dashboard() {
-  const portfolio = getMockPortfolioDetails();
-  const userStatus = getMockUserStatus();
+  const [portfolio, setPortfolioComputed] = useState({ totalEarnedUSD: 0 });
+  const [userStatus, setUserStatusComputed] = useState({
+    qualifiedVolumeUSD: 0,
+    currentRoyaltyLevelIndex: 0,
+    royaltyPayoutsReceived: 0,
+  });
 
   const [portfolioIds, setPortFolioId] = useState([])
   const [selectedPid, setSelectedPid] = useState(1);
@@ -122,6 +118,23 @@ export default function Dashboard() {
 
 
 
+  // Compute UI-facing aggregates from fetched data (no UI changes)
+  useEffect(() => {
+    // Map "Total Earned" tile to accrued growth as on-chain value (USD precision)
+    setPortfolioComputed((prev) => ({
+      ...prev,
+      totalEarnedUSD: DashBoardDetail?.accuredGrowth || 0,
+    }));
+
+    // userStatus cards — if qualified volume is present in slabPanel, use it
+    const qv = DashBoardDetail?.slabPanel?.qualifiedVolumeUSD ?? 0;
+    setUserStatusComputed((prev) => ({
+      ...prev,
+      qualifiedVolumeUSD: qv,
+      // currentRoyaltyLevelIndex and royaltyPayoutsReceived require store methods
+    }));
+  }, [DashBoardDetail]);
+
   const captPct = parseFloat(portFolioDetails?.capPct);
   const principalUSD = parseFloat(portFolioDetails?.principalUSD) / 1e6;
   const totalEarning = principalUSD * captPct / 1e2;
@@ -141,7 +154,7 @@ export default function Dashboard() {
         </div>
         <div className="flex items-center gap-2 px-3 sm:px-4 py-2 cyber-glass border border-neon-green/30 rounded-lg flex-shrink-0 w-fit">
           <div className="w-2 h-2 bg-neon-green rounded-full animate-pulse" />
-          <span className="text-xs sm:text-sm font-medium text-neon-green uppercase tracking-wide">{portfolio.status}</span>
+          <span className="text-xs sm:text-sm font-medium text-neon-green uppercase tracking-wide">Active {"("} {userAddress.slice(0,6)+"..."+userAddress.slice(-4)} {")"}</span>
         </div>
       </div>
 
@@ -155,7 +168,7 @@ export default function Dashboard() {
             <p className="text-xs sm:text-sm font-medium text-cyan-300 uppercase tracking-wide">Staked Amount</p>
           </div>
           <NumberPopup
-            value={formatUSD(portfolio.stakedUSD)}
+            value={formatUSD(parseFloat(DashBoardDetail?.dashboardData?.summary?.totalStakedUsdMicro)/1e6)}
             label="Staked Amount"
             className="text-xl sm:text-2xl font-bold mb-2 text-cyan-400 relative z-10"
           />
@@ -374,7 +387,7 @@ export default function Dashboard() {
               </div>
             </div>
             <NumberPopup
-              value={formatUSD(DashBoardDetail?.accuredGrowth)}
+              value={formatUSD(DashBoardDetail?.dashboardData?.summary?.accruedGrowthUsdMicro)}
               label="Accrued Growth"
               className="text-2xl sm:text-3xl font-bold mb-4 text-neon-green relative z-10"
             />
@@ -500,7 +513,7 @@ export default function Dashboard() {
             <p className="text-sm font-medium text-neon-green uppercase tracking-wide">Qualified Volume</p>
           </div>
           <NumberPopup
-            value={formatUSD(userStatus.qualifiedVolumeUSD)}
+            value={formatUSD(parseFloat(DashBoardDetail?.dashboardData?.summary?.qualifiedVolumeUsdMicro)/1e6)}
             label="Qualified Volume"
             className="text-2xl font-bold text-cyan-300"
           />

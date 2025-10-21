@@ -209,10 +209,10 @@ export default function StakeInvest() {
       
       let response;
 
-      if (stakeType === 'self'&&useWallet=='external') {
+      if (stakeType === 'self'&&useWallet==='external') {
         response = await CreateSelfPort(address, stakeAmount);
       }
-      if (stakeType === 'other'&&useWallet=='external') {
+      if (stakeType === 'other'&&useWallet==='external') {
         response = await CreateOtherfPort(address,beneficiaryAddress,stakeAmount);
       }
       if (stakeType === 'self'&&useWallet=='safe') {

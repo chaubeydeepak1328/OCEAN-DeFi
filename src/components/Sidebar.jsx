@@ -3,10 +3,13 @@ import { Link, NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Wallet, TrendingUp, Users, Award, Trophy, Gift, Vault,
   History, Info, Settings, FileDown, LogOut, Presentation, BookOpen, Waves,
-  Coins
+  Coins,
+  User2
 } from 'lucide-react';
 import { generateOceanDefiPDF } from '../utils/generatePDF';
 import { useAccount, useDisconnect } from 'wagmi';
+import { useStore } from '../../store/useUserInfoStore';
+import { useEffect, useState } from 'react';
 
 const mainNavItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -47,6 +50,27 @@ const menuSections = [
 export default function Sidebar() {
   const { connector } = useAccount();
   const { disconnect, disconnectAsync } = useDisconnect();
+
+  const [userId,setUserId]= useState(null)
+
+
+  const userAddress = localStorage.getItem("userAddress") || null;
+  const userIdByAdd = useStore((s) => s.userIdByAdd)
+
+  const fetchUseerId = async () => {
+    try {
+      const res = await userIdByAdd(userAddress)
+      console.log(res)
+      setUserId(Number(res))
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
+
+  useEffect(() => {
+    fetchUseerId()
+  }, [userIdByAdd])
 
   const nukeWalletCaches = () => {
     const keys = [
@@ -152,6 +176,19 @@ export default function Sidebar() {
           <h3 className="text-xs font-semibold text-cyan-400/70 uppercase tracking-wider px-3 mb-2">
             Settings & Actions
           </h3>
+
+ 
+          <button
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all hover:bg-cyan-500/10 text-cyan-400 border border-transparent hover:border-cyan-500/30 group"
+          >
+            <User2 size={20} className="group-hover:animate-pulse" />
+            <div>
+              <span className="text-sm font-medium flex-1 text-left">{userAddress.slice(0, 6) + "..." + userAddress.slice(-4)}  {'  ('}{userId}{')'} </span>
+            </div>
+          </button>
+
+
+
           <div className="space-y-1">
             <NavLink to="/dashboard/settings" className={linkClasses}>
               {({ isActive }) =>

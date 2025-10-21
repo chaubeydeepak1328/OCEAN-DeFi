@@ -7,6 +7,8 @@ import OceanQueryUpgradeableABI from './Contract_ABI/OceanQueryUpgradeableABI.js
 import OceanViewUpgradeableABI from './Contract_ABI/OCEANVIEWUPGRADABLEABI.json'
 import SlabManagerABI from './Contract_ABI/SlabManager.json'
 import { dayShortFromUnix } from "../src/utils/helper";
+import SafeWalletABI from './Contract_ABI/SafeWallet.json'
+import OceanViewV2ABI from './Contract_ABI/OceanView2.json' 
 
 const Contract = {
   UserRegistry: "0x71Ce2E2Af312e856b17d901aCDbE4ea39831C961",
@@ -23,8 +25,9 @@ const Contract = {
   SafeWallet: "0x58514DE6CCd50CF33d2bD90547847E212Ae93f11",
   OceanViewUpgradeable: "0xB1dA6010aCf502daaDD0aE40D03c40A686EE27c9",
   OceanQueryUpgradeable: "0x6bF2Fdcd0D0A79Ba65289d8d5EE17d4a6C2EC3e5",
-  PRICEORACLE:"0xda2ad06b05Eb1b12F41bBd78724ea13cA710f4e0",
-  RAMA:"0xB68295562a686f935d85A72160D1cE4c963cdeA7",
+  PRICEORACLE: "0xda2ad06b05Eb1b12F41bBd78724ea13cA710f4e0",
+  RAMA: "0xB68295562a686f935d85A72160D1cE4c963cdeA7",
+  OceanViewV2: "0x8f93fdf9A72574F9bbD40437EA1a88559082CaDD"
 };
 
 const INFURA_URL = "https://blockchain.ramestta.com";
@@ -74,7 +77,8 @@ export const useStore = create((set, get) => ({
       }
 
       const contract = new web3.eth.Contract(UserRegistryABI, Contract["UserRegistry"]);
-      const userId = await contract.methods.user(userAddress).call();
+      // UserRegistry ABI exposes `getId(address)` for user ID lookup
+      const userId = await contract.methods.getId(userAddress).call();
 
       return userId;
     } catch (error) {
@@ -280,34 +284,38 @@ export const useStore = create((set, get) => ({
     try {
       if (!userAddress) throw new Error("Missing user address");
 
-      const oceanQuery = new web3.eth.Contract(
-        OceanQueryUpgradeableABI,
-        Contract["OceanQueryUpgradeable"]
+      const OceanViewV2 = new web3.eth.Contract(
+        OceanViewV2ABI,
+        Contract['OceanViewV2']
       );
       const oceanView = new web3.eth.Contract(
         OceanViewUpgradeableABI,
         Contract["OceanViewUpgradeable"]
       );
 
+      const safeWallCont = new web3.eth.Contract(
+        SafeWalletABI,
+        Contract["SafeWallet"]
+      );
+
 
 
       // Fire all calls at once
-      const [accuredGrowth, safeWalletBalanceRaw, slabPanelRaw] = await Promise.all([
+      const [dashboardData, safeWalletBalanceRaw, slabPanelRaw] = await Promise.all([
 
-        oceanQuery.methods.getAccruedGrowth(userAddress).call({ from: userAddress }),
-        oceanQuery.methods.getSafeWalletBalance(userAddress).call({ from: userAddress }),
-        oceanView.methods.getSlabPanel(userAddress).call({ from: userAddress }),
+        OceanViewV2.methods.getDashboardData(userAddress).call(),
+        safeWallCont.methods.balanceOf(userAddress).call(),
+        oceanView.methods.getSlabPanel(userAddress).call(),
       ]);
 
-      // Normalize as needed (avoid Number for >53-bit values)
-      const toNum = (v) => (typeof v === 'bigint' ? Number(v) : Number(String(v)));
-      const toStr = (v) => (v == null ? "" : String(v));
+
+      console.log("this is sfe wallet", safeWalletBalanceRaw)
 
       return {
         // directChildrenCount: toNum(referralCountRaw),
         safeWalletRAMAWei: parseFloat(safeWalletBalanceRaw) / 1e6, // keep as string/BigInt; format at render
         slabPanel: slabPanelRaw,                // map fields if needed
-        accuredGrowth
+        dashboardData
       };
 
     } catch (error) {
@@ -324,11 +332,11 @@ export const useStore = create((set, get) => ({
         Contract.OceanViewUpgradeable
       );
 
-      // UNIX seconds
+      // Contract expects a dayId (uint32), i.e., days since epoch
       const nowSec = Math.floor(Date.now() / 1000)
+      const todayDayId = Math.floor(nowSec / 86400)
 
-      // If your solidity fn signature is: getLast7DaysEarningsUSD(address user, uint256 startTs, uint256 endTs)
-      const Last7DaysEarning = await oceanView.methods.getLast7DaysEarningsUSD(userAddress, nowSec).call();
+      const Last7DaysEarning = await oceanView.methods.getLast7DaysEarningsUSD(userAddress, todayDayId).call();
 
       const formatedRecord = [0, 1, 2, 3, 4, 5, 6].map((val, index) => (
         { day: dayShortFromUnix(Last7DaysEarning?.dayIds[index]), 'amount': parseInt(Last7DaysEarning?.usdAmounts[index]) }
@@ -421,21 +429,19 @@ export const useStore = create((set, get) => ({
 
   regPortFoliAmt: async () => {
     try {
+      const pm = new web3.eth.Contract(PortFolioManagerABI, Contract["PortFolioManager"]);
+      const query = new web3.eth.Contract(OceanQueryUpgradeableABI, Contract["OceanQueryUpgradeable"]);
 
-      const contract = new web3.eth.Contract(PortFolioManagerABI, Contract["PortFolioManager"]);
+      // Fetch actual minimum stake from chain (micro-USD)
+      const minUsdMicroStr = await query.methods.getMinimumStake().call();
+      const minUsdMicro = parseInt(minUsdMicroStr);
+      const portFolioAmtUsd = minUsdMicro / 1e6; // convert micro-USD -> USD
 
-      const portFolioAmtUsd = 10
-      const protFolioMicroUsd = portFolioAmtUsd * 1e6
-      console.log(protFolioMicroUsd)
-      const AmtInRamaWei = await contract.methods.getPackageValueInRAMA(protFolioMicroUsd).call();
-      const ramaAmt = parseInt(AmtInRamaWei) / 1e18
+      // Quote required RAMA (wei) for that USD amount
+      const AmtInRamaWei = await pm.methods.getPackageValueInRAMA(minUsdMicro.toString()).call();
+      const ramaAmt = parseInt(AmtInRamaWei) / 1e18;
 
-      console.log(AmtInRamaWei)
-
-      return {
-        portFolioAmtUsd,
-        ramaAmt
-      };
+      return { portFolioAmtUsd, ramaAmt };
 
     } catch (error) {
       console.log("regPortFoliAmt error:", error);
@@ -630,12 +636,12 @@ export const useStore = create((set, get) => ({
       if (!userAddress) {
         return
       }
-      const oceanQuery = new web3.eth.Contract(
-        OceanQueryUpgradeableABI,
-        Contract["OceanQueryUpgradeable"]
+      const safeContract = new web3.eth.Contract(
+        SafeWalletABI,
+        Contract["SafeWallet"]
       );
 
-      const safeWalletBalanceRaw = await oceanQuery.methods.getSafeWalletBalance(userAddress).call()
+      const safeWalletBalanceRaw = await safeContract.methods.balanceOf(userAddress).call()
       const SafeWalletFund = parseFloat(safeWalletBalanceRaw) / 1e6;
 
       console.log("safe Wallet fund", SafeWalletFund)
@@ -773,8 +779,8 @@ export const useStore = create((set, get) => ({
     }
   },
 
-  CreateOtherfPort: async (userAddress,toBeActivatedUSer , Amt) => {
-    console.log('CreateOtherfPort args:', userAddress,toBeActivatedUSer , Amt);
+  CreateOtherfPort: async (userAddress, toBeActivatedUSer, Amt) => {
+    console.log('CreateOtherfPort args:', userAddress, toBeActivatedUSer, Amt);
     try {
       const pm = new web3.eth.Contract(PortFolioManagerABI, Contract.PortFolioManager);
 
@@ -789,7 +795,7 @@ export const useStore = create((set, get) => ({
       console.log(sponsorAddress, valueToSend.toString(), valueToSend)
 
       const data = pm.methods
-        .createPortfolioForOthers(toBeActivatedUSer ,userAddress,Amt)
+        .createPortfolioForOthers(toBeActivatedUSer, userAddress, Amt)
         .encodeABI();
 
       const gasPrice = await web3.eth.getGasPrice();
@@ -850,7 +856,7 @@ export const useStore = create((set, get) => ({
       console.log(sponsorAddress, valueToSend.toString(), valueToSend)
 
       const data = pm.methods
-        .createPortfolioFromSafe(userAddress,valueToSend,userAddress)
+        .createPortfolioFromSafe(userAddress, valueToSend, userAddress)
         .encodeABI();
 
       const gasPrice = await web3.eth.getGasPrice();
@@ -892,7 +898,7 @@ export const useStore = create((set, get) => ({
     }
   },
 
-  SafeOtherPort: async (userAddress,beneficiary , Amt) => {
+  SafeOtherPort: async (userAddress, beneficiary, Amt) => {
     console.log('SafeOtherPort args:', userAddress, Amt);
     try {
 
@@ -911,7 +917,7 @@ export const useStore = create((set, get) => ({
       console.log(sponsorAddress, valueToSend.toString(), valueToSend)
 
       const data = pm.methods
-        .createPortfolioForOthersFromSafe(userAddress,beneficiary,valueToSend,userAddress)
+        .createPortfolioForOthersFromSafe(userAddress, beneficiary, valueToSend, userAddress)
         .encodeABI();
 
       const gasPrice = await web3.eth.getGasPrice();
