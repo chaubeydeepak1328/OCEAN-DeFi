@@ -1,7 +1,9 @@
 import { Award, TrendingUp, Users, AlertCircle, Layers, ArrowDown } from 'lucide-react';
-import { SLAB_LEVELS, formatUSD, formatPercentage, getMockUserStatus } from '../utils/contractData';
+import { SLAB_LEVELS, formatUSD, formatPercentage } from '../utils/contractData';
 import { useStore } from '../../store/useUserInfoStore';
 import { useEffect, useState } from 'react';
+import Web3 from 'web3';
+import OceanQueryUpgradeableABI from '../../store/Contract_ABI/OceanQueryUpgradeable.json';
 
 // Ocean-themed slab tier names
 const SLAB_TIER_NAMES = [
@@ -18,23 +20,10 @@ const SLAB_TIER_NAMES = [
   'Ocean Sovereign', // Level 11 - $20M
 ];
 
-// Mock data for Same Slab Override earnings from downline
-const mockSameSlabEarnings = {
-  L1: [
-    { address: '0x1234...5678', slab: 3, earned: '45.50', percentage: '10%', status: 'Active' },
-    { address: '0x2345...6789', slab: 3, earned: '32.75', percentage: '10%', status: 'Active' },
-  ],
-  L2: [
-    { address: '0x3456...7890', slab: 3, earned: '18.25', percentage: '5%', status: 'Active' },
-  ],
-  L3: [
-    { address: '0x4567...8901', slab: 3, earned: '12.50', percentage: '5%', status: 'Active' },
-  ]
-};
+// Built from on-chain same-slab partners; per-member earnings not exposed in ABI
+const formatAddr = (a) => (a ? `${a.slice(0,6)}...${a.slice(-4)}` : '');
 
 export default function SlabIncome() {
-  const userStatus = getMockUserStatus();
-  const currentSlabIndex = parseInt(userStatus.currentSlabIndex);
 
 
 
@@ -43,6 +32,8 @@ export default function SlabIncome() {
   const userAddress = localStorage.getItem("userAddress") || null;
 
   const [slabDetails, setSlabDetails] = useState();
+  const [sameSlabLists, setSameSlabLists] = useState({ L1: [], L2: [], L3: [] });
+  const [hasMinDirects, setHasMinDirects] = useState(null);
 
   const getSlabLevel = useStore((s) => s.getSlabLevel);
 
@@ -54,6 +45,47 @@ export default function SlabIncome() {
       const res = await getSlabLevel(userAddress);
       console.log("fetchSlabLevel", res)
       setSlabDetails(res)
+      // Build partner lists with slab details
+      try {
+        const web3 = new Web3('https://blockchain.ramestta.com');
+        const oceanQuery = new web3.eth.Contract(OceanQueryUpgradeableABI, '0x6bF2Fdcd0D0A79Ba65289d8d5EE17d4a6C2EC3e5');
+        const waves = res?.getSameSlabPartner || {};
+        const mapWave = async (arr, pct) => {
+          const out = [];
+          for (const addr of (arr || [])) {
+            try {
+              const tmb = await oceanQuery.methods.getTeamMemberDetails(addr).call();
+              out.push({
+                address: formatAddr(addr),
+                slab: parseInt(tmb?.slabLevel || 0),
+                earned: '0.00', // per-member override not available in ABI; see note
+                percentage: pct,
+                status: tmb?.hasActive50 ? 'Active' : 'Inactive',
+              });
+            } catch (e) {
+              out.push({ address: formatAddr(addr), slab: 0, earned: '0.00', percentage: pct, status: 'Unknown' });
+            }
+          }
+          return out;
+        };
+        const [L1, L2, L3] = await Promise.all([
+          mapWave(waves?.firstWave, '10%'),
+          mapWave(waves?.secondWave, '5%'),
+          mapWave(waves?.thirdWave, '5%'),
+        ]);
+        setSameSlabLists({ L1, L2, L3 });
+
+        // Check minimum directs for current slab level
+        const slabIdx = parseInt(res?.slabLevel || 0);
+        if (slabIdx > 0) {
+          const ok = await oceanQuery.methods.hasMinimumDirects(userAddress, slabIdx).call();
+          setHasMinDirects(!!ok);
+        } else {
+          setHasMinDirects(null);
+        }
+      } catch (inner) {
+        console.log('same-slab detail load error', inner);
+      }
     } catch (error) {
       console.log(error);
     }
@@ -66,10 +98,13 @@ export default function SlabIncome() {
 
 
   // Calculate total Same Slab Override earnings
-  const totalL1Earnings = parseFloat(slabDetails?.OverrideEarnings?.l1).toFixed(2);
-  const totalL2Earnings = parseFloat(slabDetails?.OverrideEarnings?.l1).toFixed(2)
-  const totalL3Earnings = parseFloat(slabDetails?.OverrideEarnings?.l1).toFixed(2);
-  const totalOverrideEarnings = parseFloat(totalL1Earnings + totalL2Earnings + totalL3Earnings);
+  const totalL1Earnings = Number.parseFloat(slabDetails?.OverrideEarnings?.l1 || 0);
+  const totalL2Earnings = Number.parseFloat(slabDetails?.OverrideEarnings?.l2 || 0);
+  const totalL3Earnings = Number.parseFloat(slabDetails?.OverrideEarnings?.l3 || 0);
+  const totalOverrideEarnings = (totalL1Earnings + totalL2Earnings + totalL3Earnings).toFixed(2);
+
+  // Current slab index for UI mapping
+  const currentSlabIndex = parseInt(slabDetails?.slabLevel || 0);
 
 
   return (
@@ -173,7 +208,7 @@ export default function SlabIncome() {
           <h3 className="text-sm font-semibold text-cyan-300 uppercase tracking-wide">Earnings Breakdown</h3>
 
           {/* L1 Downline */}
-          {mockSameSlabEarnings.L1.length > 0 && (
+          {sameSlabLists.L1.length > 0 && (
             <div className="cyber-glass border border-neon-purple/20 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-8 h-8 rounded-full bg-neon-purple/20 flex items-center justify-center">
@@ -182,7 +217,7 @@ export default function SlabIncome() {
                 <span className="text-sm font-medium text-neon-purple">First Wave Partners (You earn 10%)</span>
               </div>
               <div className="space-y-2">
-                {mockSameSlabEarnings.L1.map((member, idx) => (
+                {sameSlabLists.L1.map((member, idx) => (
                   <div key={idx} className="flex items-center justify-between p-3 cyber-glass border border-neon-purple/10 rounded-lg">
                     <div className="flex items-center gap-3">
                       <code className="text-xs font-mono text-cyan-300">{member.address}</code>
@@ -199,7 +234,7 @@ export default function SlabIncome() {
           )}
 
           {/* L2 Downline */}
-          {mockSameSlabEarnings.L2.length > 0 && (
+          {sameSlabLists.L2.length > 0 && (
             <div className="cyber-glass border border-cyan-500/20 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center">
@@ -208,7 +243,7 @@ export default function SlabIncome() {
                 <span className="text-sm font-medium text-cyan-400">Second Wave Partners (You earn 5%)</span>
               </div>
               <div className="space-y-2">
-                {mockSameSlabEarnings.L2.map((member, idx) => (
+                {sameSlabLists.L2.map((member, idx) => (
                   <div key={idx} className="flex items-center justify-between p-3 cyber-glass border border-cyan-500/10 rounded-lg">
                     <div className="flex items-center gap-3">
                       <code className="text-xs font-mono text-cyan-300">{member.address}</code>
@@ -225,7 +260,7 @@ export default function SlabIncome() {
           )}
 
           {/* L3 Downline */}
-          {mockSameSlabEarnings.L3.length > 0 && (
+          {sameSlabLists.L3.length > 0 && (
             <div className="cyber-glass border border-neon-green/20 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-8 h-8 rounded-full bg-neon-green/20 flex items-center justify-center">
@@ -234,7 +269,7 @@ export default function SlabIncome() {
                 <span className="text-sm font-medium text-neon-green">Third Wave Partners (You earn 5%)</span>
               </div>
               <div className="space-y-2">
-                {mockSameSlabEarnings.L3.map((member, idx) => (
+                {sameSlabLists.L3.map((member, idx) => (
                   <div key={idx} className="flex items-center justify-between p-3 cyber-glass border border-neon-green/10 rounded-lg">
                     <div className="flex items-center gap-3">
                       <code className="text-xs font-mono text-cyan-300">{member.address}</code>
@@ -445,7 +480,7 @@ export default function SlabIncome() {
                 Requires 1 new $50 direct ID activation before claiming slab income
               </p>
               <div className="mt-2">
-                {userStatus.nextSlabClaimRequiresDirects === '1' ? (
+                {hasMinDirects === false ? (
                   <span className="text-xs font-medium text-neon-orange">⚠ Activation Required</span>
                 ) : (
                   <span className="text-xs font-medium text-neon-green">✓ Ready to Claim</span>
@@ -484,3 +519,4 @@ export default function SlabIncome() {
     </div>
   );
 }
+

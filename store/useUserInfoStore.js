@@ -8,7 +8,7 @@ import OceanViewUpgradeableABI from './Contract_ABI/OCEANVIEWUPGRADABLEABI.json'
 import SlabManagerABI from './Contract_ABI/SlabManager.json'
 import { dayShortFromUnix } from "../src/utils/helper";
 import SafeWalletABI from './Contract_ABI/SafeWallet.json'
-import OceanViewV2ABI from './Contract_ABI/OceanView2.json' 
+import OceanViewV2ABI from './Contract_ABI/OceanView2.json'
 
 const Contract = {
   UserRegistry: "0x71Ce2E2Af312e856b17d901aCDbE4ea39831C961",
@@ -716,7 +716,9 @@ export const useStore = create((set, get) => ({
 
 
 
-
+  // ==========================================================================
+  // Stake And Invest
+  // ==========================================================================
 
   CreateSelfPort: async (userAddress, Amt) => {
     console.log('CreateSelfPort args:', userAddress, Amt);
@@ -914,7 +916,7 @@ export const useStore = create((set, get) => ({
 
 
 
-      console.log( valueToSend.toString(), valueToSend)
+      console.log(valueToSend.toString(), valueToSend)
 
       const data = pm.methods
         .createPortfolioForOthersFromSafe(userAddress, beneficiary, valueToSend, userAddress)
@@ -958,6 +960,11 @@ export const useStore = create((set, get) => ({
       throw error;
     }
   },
+
+  // ==========================================================================
+  //PortFolioOverView
+  // ==========================================================================
+
 
 
 }));

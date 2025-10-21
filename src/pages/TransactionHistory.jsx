@@ -1,6 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { History, Filter, Download, Search, TrendingUp, Award, Trophy, Gift, Layers, Wallet, ArrowUpRight, ArrowDownRight, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import { formatUSD, formatRAMA } from '../utils/contractData';
+import Web3 from 'web3';
+import OceanViewV2ABI from '../../store/Contract_ABI/OceanView2.json';
+import OceanQueryUpgradeableABI from '../../store/Contract_ABI/OceanQueryUpgradeable.json';
 
 const TRANSACTION_TYPES = {
   PORTFOLIO_GROWTH: 'Portfolio Growth',
@@ -15,209 +18,10 @@ const TRANSACTION_TYPES = {
   TRANSFER_TO_SAFE: 'Transfer to Safe Wallet',
 };
 
-const mockTransactions = [
-  {
-    id: 'tx013',
-    type: TRANSACTION_TYPES.SPOT_INCOME,
-    amount_usd: 500,
-    amount_rama: 20.41,
-    source: 'Direct Referral: 0x4567...8901',
-    destination: 'Safe Wallet',
-    timestamp: '2024-10-18 09:30:15',
-    status: 'pending',
-    fee: 0,
-    txHash: '0x27m8n9o0p1q2r3s4t5u6v7w8x9y0z1a2b3c4d5e6f7g8h9i0',
-    spotIncomeDetails: {
-      referralLevel: 'Direct',
-      percentage: 10,
-      fromUser: '0x4567...8901',
-    },
-  },
-  {
-    id: 'tx001',
-    type: TRANSACTION_TYPES.PORTFOLIO_GROWTH,
-    amount_usd: 2850,
-    amount_rama: 116.33,
-    source: 'Daily Growth Accrual',
-    destination: 'Safe Wallet',
-    timestamp: '2024-10-17 14:23:45',
-    status: 'completed',
-    fee: 0,
-    txHash: '0x7a8b9c0d1e2f3g4h5i6j7k8l9m0n1o2p3q4r5s6t7u8v9w0x',
-  },
-  {
-    id: 'tx002',
-    type: TRANSACTION_TYPES.SLAB_INCOME,
-    amount_usd: 1250,
-    amount_rama: 51.02,
-    source: 'Team Member: 0x1234...5678',
-    destination: 'Safe Wallet',
-    timestamp: '2024-10-17 11:15:30',
-    status: 'completed',
-    fee: 0,
-    txHash: '0x8b9c0d1e2f3g4h5i6j7k8l9m0n1o2p3q4r5s6t7u8v9w0x1y',
-    incomeDetails: {
-      slabLevel: 3,
-      percentage: 12,
-      teamMember: '0x1234...5678',
-    },
-  },
-  {
-    id: 'tx003',
-    type: TRANSACTION_TYPES.CLAIM_TO_WALLET,
-    amount_usd: 5000,
-    amount_rama: 204.08,
-    source: 'Portfolio Growth',
-    destination: 'External Wallet',
-    timestamp: '2024-10-16 16:42:18',
-    status: 'completed',
-    fee: 5,
-    feeAmount: 10.20,
-    netAmount: 193.88,
-    txHash: '0x9c0d1e2f3g4h5i6j7k8l9m0n1o2p3q4r5s6t7u8v9w0x1y2z',
-  },
-  {
-    id: 'tx004',
-    type: TRANSACTION_TYPES.PORTFOLIO_CREATED,
-    amount_usd: 15000,
-    amount_rama: 612.24,
-    source: 'Safe Wallet',
-    destination: 'Portfolio #2',
-    timestamp: '2024-10-16 09:30:12',
-    status: 'completed',
-    fee: 0,
-    portfolioDetails: {
-      isBooster: true,
-      commission: 0,
-      walletType: 'Safe Wallet',
-      portfolioId: 'PF-2024-002',
-      growthRate: '0.5% Daily',
-    },
-  },
-  {
-    id: 'tx005',
-    type: TRANSACTION_TYPES.ROYALTY_INCOME,
-    amount_usd: 8000,
-    amount_rama: 326.53,
-    source: 'Monthly Royalty - Level 7',
-    destination: 'Safe Wallet',
-    timestamp: '2024-10-15 00:01:05',
-    status: 'completed',
-    fee: 0,
-    txHash: '0xa0d1e2f3g4h5i6j7k8l9m0n1o2p3q4r5s6t7u8v9w0x1y2z3',
-    royaltyDetails: {
-      level: 7,
-      monthlyPayout: 8000,
-    },
-  },
-  {
-    id: 'tx006',
-    type: TRANSACTION_TYPES.SAME_SLAB_OVERRIDE,
-    amount_usd: 450,
-    amount_rama: 18.37,
-    source: 'Override from 0x2345...6789',
-    destination: 'Safe Wallet',
-    timestamp: '2024-10-14 18:22:45',
-    status: 'completed',
-    fee: 0,
-    txHash: '0xb1e2f3g4h5i6j7k8l9m0n1o2p3q4r5s6t7u8v9w0x1y2z3a4',
-    overrideDetails: {
-      wave: 'First Wave',
-      percentage: 10,
-      sourceMember: '0x2345...6789',
-    },
-  },
-  {
-    id: 'tx007',
-    type: TRANSACTION_TYPES.ONE_TIME_REWARD,
-    amount_usd: 10000,
-    amount_rama: 408.16,
-    source: 'Milestone Achievement #3',
-    destination: 'Safe Wallet',
-    timestamp: '2024-10-13 12:45:30',
-    status: 'completed',
-    fee: 0,
-    txHash: '0xc2f3g4h5i6j7k8l9m0n1o2p3q4r5s6t7u8v9w0x1y2z3a4b5',
-    rewardDetails: {
-      milestone: 3,
-      rewardName: 'Shell Harvest',
-    },
-  },
-  {
-    id: 'tx008',
-    type: TRANSACTION_TYPES.PORTFOLIO_CREATED,
-    amount_usd: 5000,
-    amount_rama: 204.08,
-    source: 'External Wallet',
-    destination: 'Portfolio #1',
-    timestamp: '2024-10-12 10:15:00',
-    status: 'completed',
-    fee: 5,
-    feeAmount: 10.20,
-    txHash: '0xd3g4h5i6j7k8l9m0n1o2p3q4r5s6t7u8v9w0x1y2z3a4b5c6',
-    portfolioDetails: {
-      isBooster: false,
-      commission: 5,
-      walletType: 'External Wallet',
-      upline: '0xabcd...ef01',
-      portfolioId: 'PF-2024-001',
-      growthRate: '0.5% Daily',
-    },
-  },
-  {
-    id: 'tx009',
-    type: TRANSACTION_TYPES.TRANSFER_TO_SAFE,
-    amount_usd: 3200,
-    amount_rama: 130.61,
-    source: 'Portfolio Growth Claim',
-    destination: 'Safe Wallet',
-    timestamp: '2024-10-11 15:30:22',
-    status: 'completed',
-    fee: 0,
-    txHash: '0xe4h5i6j7k8l9m0n1o2p3q4r5s6t7u8v9w0x1y2z3a4b5c6d7',
-  },
-  {
-    id: 'tx010',
-    type: TRANSACTION_TYPES.CLAIM_TO_SAFE,
-    amount_usd: 4500,
-    amount_rama: 183.67,
-    source: 'Slab Income',
-    destination: 'Safe Wallet',
-    timestamp: '2024-10-10 08:45:15',
-    status: 'completed',
-    fee: 0,
-    txHash: '0xf5i6j7k8l9m0n1o2p3q4r5s6t7u8v9w0x1y2z3a4b5c6d7e8',
-  },
-  {
-    id: 'tx011',
-    type: TRANSACTION_TYPES.SLAB_INCOME,
-    amount_usd: 875,
-    amount_rama: 35.71,
-    source: 'Team Member: 0x3456...7890',
-    destination: 'Safe Wallet',
-    timestamp: '2024-10-09 14:20:40',
-    status: 'completed',
-    fee: 0,
-    txHash: '0x06j7k8l9m0n1o2p3q4r5s6t7u8v9w0x1y2z3a4b5c6d7e8f9',
-    incomeDetails: {
-      slabLevel: 3,
-      percentage: 12,
-      teamMember: '0x3456...7890',
-    },
-  },
-  {
-    id: 'tx012',
-    type: TRANSACTION_TYPES.PORTFOLIO_GROWTH,
-    amount_usd: 1950,
-    amount_rama: 79.59,
-    source: 'Daily Growth Accrual',
-    destination: 'Safe Wallet',
-    timestamp: '2024-10-08 10:12:35',
-    status: 'completed',
-    fee: 0,
-    txHash: '0x17k8l9m0n1o2p3q4r5s6t7u8v9w0x1y2z3a4b5c6d7e8f9g0',
-  },
-];
+// transactions will be loaded from chain
+const OCEAN_QUERY_ADDRESS = '0x6bF2Fdcd0D0A79Ba65289d8d5EE17d4a6C2EC3e5';
+const OCEAN_VIEW_V2_ADDRESS = '0x8f93fdf9A72574F9bbD40437EA1a88559082CaDD';
+const RPC_URL = 'https://blockchain.ramestta.com';
 
 const getTransactionIcon = (type) => {
   const iconMap = {
@@ -255,8 +59,38 @@ export default function TransactionHistory() {
   const [selectedType, setSelectedType] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedTx, setExpandedTx] = useState(null);
+  const [transactions, setTransactions] = useState([]);
+  const [recentCount, setRecentCount] = useState(0);
+  const [incomeTotals, setIncomeTotals] = useState({ growth: 0, slab: 0, royalty: 0, overrideB: 0, rewards: 0 });
 
-  const filteredTransactions = mockTransactions.filter(tx => {
+  useEffect(() => {
+    const user = localStorage.getItem('userAddress');
+    if (!user) return;
+    const web3 = new Web3(RPC_URL);
+    const view = new web3.eth.Contract(OceanViewV2ABI, OCEAN_VIEW_V2_ADDRESS);
+    const query = new web3.eth.Contract(OceanQueryUpgradeableABI, OCEAN_QUERY_ADDRESS);
+
+    (async () => {
+      try {
+        const [growth, slab, royalty, overrideB, rewards] = await query.methods.getIncomeStreamTotals(user).call();
+        setIncomeTotals({
+          growth: Number(growth) / 1e8,
+          slab: Number(slab) / 1e8,
+          royalty: Number(royalty) / 1e8,
+          overrideB: Number(overrideB) / 1e8,
+          rewards: Number(rewards) / 1e8,
+        });
+
+        const entries = await view.methods.getRecentTransactions(user, 50).call();
+        setRecentCount(entries?.length || 0);
+        // NOTE: entries are opaque bytes; decoder method not present yet
+      } catch (e) {
+        console.error('TransactionHistory load error:', e);
+      }
+    })();
+  }, []);
+
+  const filteredTransactions = transactions.filter(tx => {
     const matchesType = selectedType === 'all' || tx.type === selectedType;
     const matchesSearch =
       tx.txHash?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -265,19 +99,19 @@ export default function TransactionHistory() {
     return matchesType && matchesSearch;
   });
 
-  const totalEarnings = mockTransactions.reduce((sum, tx) => sum + tx.amount_usd, 0);
-  const totalTransactions = mockTransactions.length;
-  const completedTransactions = mockTransactions.filter(tx => tx.status === 'completed').length;
+  const totalEarnings = incomeTotals.growth + incomeTotals.slab + incomeTotals.royalty + incomeTotals.overrideB + incomeTotals.rewards;
+  const totalTransactions = recentCount;
+  const completedTransactions = recentCount;
 
   const incomeStreamTotals = {
-    portfolioGrowth: mockTransactions.filter(tx => tx.type === TRANSACTION_TYPES.PORTFOLIO_GROWTH).reduce((sum, tx) => sum + tx.amount_usd, 0),
-    slabIncome: mockTransactions.filter(tx => tx.type === TRANSACTION_TYPES.SLAB_INCOME).reduce((sum, tx) => sum + tx.amount_usd, 0),
-    royaltyIncome: mockTransactions.filter(tx => tx.type === TRANSACTION_TYPES.ROYALTY_INCOME).reduce((sum, tx) => sum + tx.amount_usd, 0),
-    sameSlabOverride: mockTransactions.filter(tx => tx.type === TRANSACTION_TYPES.SAME_SLAB_OVERRIDE).reduce((sum, tx) => sum + tx.amount_usd, 0),
-    oneTimeReward: mockTransactions.filter(tx => tx.type === TRANSACTION_TYPES.ONE_TIME_REWARD).reduce((sum, tx) => sum + tx.amount_usd, 0),
+    portfolioGrowth: incomeTotals.growth,
+    slabIncome: incomeTotals.slab,
+    royaltyIncome: incomeTotals.royalty,
+    sameSlabOverride: incomeTotals.overrideB,
+    oneTimeReward: incomeTotals.rewards,
   };
 
-  const portfolioCreations = mockTransactions.filter(tx => tx.type === TRANSACTION_TYPES.PORTFOLIO_CREATED);
+  const portfolioCreations = transactions.filter(tx => tx.type === TRANSACTION_TYPES.PORTFOLIO_CREATED);
   const safeWalletCreations = portfolioCreations.filter(tx => tx.portfolioDetails?.walletType === 'Safe Wallet');
   const externalWalletCreations = portfolioCreations.filter(tx => tx.portfolioDetails?.walletType === 'External Wallet');
 
@@ -336,8 +170,8 @@ export default function TransactionHistory() {
             </div>
             <p className="text-xs text-cyan-400 uppercase tracking-wide">Latest Activity</p>
           </div>
-          <p className="text-sm font-bold text-cyan-300">{mockTransactions[0]?.timestamp.split(' ')[0]}</p>
-          <p className="text-xs text-cyan-300/90 mt-1">{mockTransactions[0]?.type}</p>
+          <p className="text-sm font-bold text-cyan-300">{transactions[0]?.timestamp?.split(' ')[0] || '-'}</p>
+          <p className="text-xs text-cyan-300/90 mt-1">{transactions[0]?.type || '-'}</p>
         </div>
       </div>
 
@@ -698,3 +532,5 @@ export default function TransactionHistory() {
     </div>
   );
 }
+
+
