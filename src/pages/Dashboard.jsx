@@ -1,13 +1,14 @@
 // src/screens/Dashboard.jsx
 import { useEffect, useMemo, useState } from 'react';
-import { TrendingUp, Wallet, Users, Award, DollarSign, Clock, Zap, Gift, Trophy, ArrowUpRight } from 'lucide-react';
+import { TrendingUp, Wallet, Users, Award, DollarSign, Clock, Zap, Gift, Trophy, ArrowUpRight, Info } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatUSD, formatRAMA } from '../utils/contractData';
 import NumberPopup from '../components/NumberPopup';
 import LivePriceFeed from '../components/LivePriceFeed';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
 import { useStore } from '../../store/useUserInfoStore';
-
+import ProgressBar from '../components/ProgressBar';
+import Tooltip from "../components/Tooltip";
 
 
 export default function Dashboard() {
@@ -37,7 +38,7 @@ export default function Dashboard() {
     try {
       console.log(userAddress)
       const res = await getTOtalPortFolio(userAddress);
-      console.log("-------------->$%^&*(",userAddress,res)
+      console.log("-------------->$%^&*(", userAddress, res)
       setPortFolioId(res?.ArrPortfolio?.map(Number) || [])
       setFortFolioDetails(res?.ProtFolioDetail)
     } catch (error) {
@@ -69,7 +70,7 @@ export default function Dashboard() {
         return;
       }
       const res = await get7DayEarningTrend(userAddress);
-      console.log("7-Days Trend",res)
+      console.log("7-Days Trend", res)
       setLast7Days(res)
     } catch (error) {
       console.log(error)
@@ -93,7 +94,7 @@ export default function Dashboard() {
   }
 
   useEffect(() => {
-    if (selectedPid&&portfolioIds.length>0) {
+    if (selectedPid && portfolioIds.length > 0) {
       GetPortFolioById()
     }
   }, [selectedPid])
@@ -142,6 +143,16 @@ export default function Dashboard() {
 
   console.log(principalUSD, totalEarning, captPct, progress)
 
+
+
+  const CAP_TARGET = portFolioDetails?.booster ? principalUSD * 2.5 : principalUSD * 2;
+  const REMAINING_REWARD = CAP_TARGET - parseFloat(DashBoardDetail?.dashboardData?.summary?.accruedGrowthUsdMicro);
+
+
+
+  // Lifetime 4× Cap Progress
+
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -154,7 +165,7 @@ export default function Dashboard() {
         </div>
         <div className="flex items-center gap-2 px-3 sm:px-4 py-2 cyber-glass border border-neon-green/30 rounded-lg flex-shrink-0 w-fit">
           <div className="w-2 h-2 bg-neon-green rounded-full animate-pulse" />
-          <span className="text-xs sm:text-sm font-medium text-neon-green uppercase tracking-wide">Active {"("} {userAddress.slice(0,6)+"..."+userAddress.slice(-4)} {")"}</span>
+          <span className="text-xs sm:text-sm font-medium text-neon-green uppercase tracking-wide">Active {"("} {userAddress.slice(0, 6) + "..." + userAddress.slice(-4)} {")"}</span>
         </div>
       </div>
 
@@ -168,7 +179,7 @@ export default function Dashboard() {
             <p className="text-xs sm:text-sm font-medium text-cyan-300 uppercase tracking-wide">Staked Amount</p>
           </div>
           <NumberPopup
-            value={formatUSD(parseFloat(DashBoardDetail?.dashboardData?.summary?.totalStakedUsdMicro)/1e6)}
+            value={formatUSD(parseFloat(DashBoardDetail?.dashboardData?.summary?.totalStakedUsdMicro) / 1e6)}
             label="Staked Amount"
             className="text-xl sm:text-2xl font-bold mb-2 text-cyan-400 relative z-10"
           />
@@ -188,7 +199,7 @@ export default function Dashboard() {
           </div>
           <NumberPopup
             // value={parseFloat(DashBoardDetail?.dashboardData?.summary?.totalEarnedRamaWei)/1e18 + " RAMA"}
-            value={parseFloat(DashBoardDetail?.GrantTotalEarn)/1e18}
+            value={parseFloat(DashBoardDetail?.GrantTotalEarn) / 1e18}
 
             label="Total Earned"
             className="text-xl sm:text-2xl font-bold mb-2 text-neon-green relative z-10"
@@ -223,7 +234,7 @@ export default function Dashboard() {
             <p className="text-xs sm:text-sm font-medium text-cyan-400 uppercase tracking-wide">Safe Wallet</p>
           </div>
           <NumberPopup
-            value={"$"+(parseFloat(DashBoardDetail?.dashboardData?.wallet?.safeWalletUsdMicro)/1e6).toFixed(5)}
+            value={"$" + (parseFloat(DashBoardDetail?.dashboardData?.wallet?.safeWalletUsdMicro) / 1e6).toFixed(5)}
             label="Safe Wallet"
             className="text-xl sm:text-2xl font-bold mb-2 text-cyan-400 relative z-10"
           />
@@ -319,13 +330,24 @@ export default function Dashboard() {
               {portfolioIds.length !== 0 && (
                 <div className="grid grid-cols-3 gap-2 sm:gap-4">
                   <div className="p-3 sm:p-4 cyber-glass rounded-xl border border-cyan-500/30 hover:border-cyan-500/80 transition-all group">
-                    <p className="text-xs text-cyan-400 font-medium mb-1 uppercase tracking-wider">Daily Rate</p>
-                    <p className="text-lg sm:text-xl font-bold text-cyan-300 group-hover:text-neon-glow transition-all">{(parseFloat(portFolioDetails?.dailyRateWad) / 1e18) * 100}%</p>
+                    <p className="text-xs text-cyan-400 font-medium mb-1 uppercase tracking-wider">Total Accured Reward</p>
+                    <p className="text-lg sm:text-xl font-bold text-cyan-300 group-hover:text-neon-glow transition-all">{formatUSD(DashBoardDetail?.dashboardData?.summary?.accruedGrowthUsdMicro)}</p>
                   </div>
                   <div className="p-3 sm:p-4 cyber-glass rounded-xl border border-neon-green/30 hover:border-neon-green/80 transition-all group">
-                    <p className="text-xs text-neon-green font-medium mb-1 uppercase tracking-wider">Direct Refs</p>
-                    <p className="text-lg sm:text-xl font-bold text-neon-green group-hover:text-neon-glow transition-all">{parseInt(DashBoardDetail?.slabPanel?.directMembers)}</p>
+                    <p className="text-xs text-neon-green font-medium mb-1 uppercase tracking-wider">PORTFOLIO PRINCIPAL</p>
+                    <p className="text-lg sm:text-xl font-bold text-neon-green group-hover:text-neon-glow transition-all">{formatUSD(parseFloat(portFolioDetails?.principalUSD) / 1e6)}</p>
                   </div>
+
+                  <div className="p-3 sm:p-4 cyber-glass rounded-xl border border-neon-green/30 hover:border-neon-green/80 transition-all group">
+                    <p className="text-xs text-neon-green font-medium mb-1 uppercase tracking-wider">CAP TARGET</p>
+                    <p className="text-lg sm:text-xl font-bold text-neon-green group-hover:text-neon-glow transition-all">{CAP_TARGET}</p>
+                  </div>
+
+                  <div className="p-3 sm:p-4 cyber-glass rounded-xl border border-neon-green/30 hover:border-neon-green/80 transition-all group">
+                    <p className="text-xs text-neon-green font-medium mb-1 uppercase tracking-wider">REMAINING REWARD</p>
+                    <p className="text-lg sm:text-xl font-bold text-neon-green group-hover:text-neon-glow transition-all">{REMAINING_REWARD}</p>
+                  </div>
+
                   <div className="p-3 sm:p-4 cyber-glass rounded-xl border border-neon-orange/30 hover:border-neon-orange/80 transition-all group">
                     <p className="text-xs text-neon-orange font-medium mb-1 uppercase tracking-wider">Slab Tier</p>
                     <p className="text-lg sm:text-xl font-bold text-neon-orange group-hover:text-neon-glow transition-all">
@@ -337,6 +359,108 @@ export default function Dashboard() {
               )}
             </div>
           </div>
+
+
+          {/* =========================================================== */}
+
+          <div className="cyber-glass rounded-2xl p-5 sm:p-6 border border-cyan-500/30 hover:border-cyan-500/80 relative overflow-hidden transition-all">
+            <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
+
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-cyan-300 uppercase tracking-wide">
+                  Lifetime 4× Cap Progress
+                </span>
+                <Tooltip content="Max your lifetime earnings can reach — 4× of your total historical staked amount.">
+                  <Info size={16} className="text-cyan-400/70 hover:text-cyan-300 transition-colors cursor-pointer" />
+                </Tooltip>
+              </div>
+
+              <span className="text-sm font-semibold text-neon-green">
+                20 / 120 USD Earned
+              </span>
+            </div>
+
+            <ProgressBar
+              progress={Math.min(100, (20 / 120) * 100)} // ✅ auto calculates %
+              current="20"
+              max="120"
+              label=""
+              color="green"
+              showMilestones={true}
+            />
+
+            <p className="text-xs text-cyan-400/70 mt-2">
+              Remaining Cap: <span className="text-neon-green font-medium">100 USD</span>
+            </p>
+
+
+
+
+            <div className="mt-6 grid grid-cols-3 gap-2 sm:gap-3 md:gap-4">
+              <div className="p-2.5 sm:p-3 md:p-4 cyber-glass rounded-xl border border-cyan-500/30 hover:border-cyan-500/80 min-w-0 transition-all overflow-hidden">
+                <div className="flex flex-col gap-0.5 mb-1">
+                  <p className="text-[10px] sm:text-xs text-cyan-400 font-medium sm:uppercase sm:tracking-wider leading-tight">
+                    TOTAL PORTFOLIO
+                  </p>
+
+                </div>
+                <p className="text-base sm:text-lg md:text-xl font-bold text-cyan-300 whitespace-nowrap">
+                  12%
+                </p>
+              </div>
+              <div className="p-2.5 sm:p-3 md:p-4 cyber-glass rounded-xl border border-neon-green/30 hover:border-neon-green/80 min-w-0 transition-all overflow-hidden">
+                <div className="flex flex-col gap-0.5 mb-1">
+                  <p className="text-[10px] sm:text-xs text-neon-green font-medium sm:uppercase sm:tracking-wider leading-tight">
+                    TOTAL AVAILABLEL CAP
+                  </p>
+
+                </div>
+                <p className="text-base sm:text-lg md:text-xl font-bold text-neon-green whitespace-nowrap">
+                  45
+                </p>
+              </div>
+              <div className="p-2.5 sm:p-3 md:p-4 cyber-glass rounded-xl border border-neon-orange/30 hover:border-neon-orange/80 min-w-0  transition-all overflow-hidden">
+                <div className="flex flex-col gap-0.5 mb-1">
+                  <p className="text-[10px] sm:text-xs text-neon-orange font-medium sm:uppercase sm:tracking-wider leading-tight">
+                    USED CAP
+                  </p>
+
+                </div>
+                <p className="text-base sm:text-lg md:text-xl font-bold text-neon-orange whitespace-nowrap">
+                  1
+                </p>
+              </div>
+
+              <div className="p-2.5 sm:p-3 md:p-4 cyber-glass rounded-xl border border-neon-orange/30 hover:border-neon-orange/80 min-w-0  transition-all overflow-hidden">
+                <div className="flex flex-col gap-0.5 mb-1">
+                  <p className="text-[10px] sm:text-xs text-neon-orange font-medium sm:uppercase sm:tracking-wider leading-tight">
+                    REMAINING CAP
+                  </p>
+
+                </div>
+                <p className="text-base sm:text-lg md:text-xl font-bold text-neon-orange whitespace-nowrap">
+                  1
+                </p>
+              </div>
+
+
+              <div className="p-2.5 sm:p-3 md:p-4 cyber-glass rounded-xl border border-neon-orange/30 hover:border-neon-orange/80 min-w-0  transition-all overflow-hidden">
+                <div className="flex flex-col gap-0.5 mb-1">
+                  <p className="text-[10px] sm:text-xs text-neon-orange font-medium sm:uppercase sm:tracking-wider leading-tight">
+                    Missed Income
+                  </p>
+
+                </div>
+                <p className="text-base sm:text-lg md:text-xl font-bold text-neon-orange whitespace-nowrap">
+                  1
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* =========================================================== */}
+
 
           <div className="cyber-glass rounded-2xl p-4 sm:p-6 border border-cyan-500/30 hover:border-cyan-500/80 relative overflow-hidden transition-all">
             <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
@@ -376,30 +500,7 @@ export default function Dashboard() {
         </div>
 
         <div className="space-y-4 sm:space-y-6">
-          <div className="cyber-glass border border-neon-green/50 hover:border-neon-green rounded-2xl p-4 sm:p-6 text-white relative overflow-hidden group transition-all">
-            <div className="absolute inset-0 bg-gradient-to-br from-neon-green/10 to-cyan-500/10 opacity-50 group-hover:opacity-70 transition-opacity" />
-            <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-neon-green/70 to-transparent" />
-            <div className="flex items-center gap-3 mb-4 relative z-10">
-              <div className="p-2 bg-neon-green/20 rounded-lg flex-shrink-0 border border-neon-green/40">
-                <TrendingUp size={20} className="text-neon-green" />
-              </div>
-              <div>
-                <p className="text-sm text-neon-green font-medium uppercase tracking-wide">Accrued Growth</p>
-                <p className="text-xs text-cyan-300/90">Available to claim</p>
-              </div>
-            </div>
-            <NumberPopup
-              value={formatUSD(DashBoardDetail?.dashboardData?.summary?.accruedGrowthUsdMicro)}
-              label="Accrued Growth"
-              className="text-2xl sm:text-3xl font-bold mb-4 text-neon-green relative z-10"
-            />
-            <Link
-              to="/dashboard/earnings"
-              className="block w-full py-2.5 sm:py-3 bg-gradient-to-r from-cyan-500 to-neon-green hover:from-cyan-400 hover:to-neon-green/90 rounded-lg text-sm sm:text-base font-bold transition-all text-dark-950 text-center relative z-10 group-hover:shadow-neon-green"
-            >
-              Claim Now
-            </Link>
-          </div>
+
 
           <div className="cyber-glass rounded-2xl p-4 sm:p-6 border border-cyan-500/30 hover:border-cyan-500/80 relative overflow-hidden transition-all">
             <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
@@ -492,6 +593,7 @@ export default function Dashboard() {
         </div>
       </div>
 
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <Link to="/dashboard/analytics" className="cyber-glass rounded-xl p-5 border border-cyan-500/30 hover:border-cyan-500/80 transition-all group relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -515,7 +617,7 @@ export default function Dashboard() {
             <p className="text-sm font-medium text-neon-green uppercase tracking-wide">Qualified Volume</p>
           </div>
           <NumberPopup
-            value={formatUSD(parseFloat(DashBoardDetail?.dashboardData?.summary?.qualifiedVolumeUsdMicro)/1e6)}
+            value={formatUSD(parseFloat(DashBoardDetail?.dashboardData?.summary?.qualifiedVolumeUsdMicro) / 1e6)}
             label="Qualified Volume"
             className="text-2xl font-bold text-cyan-300"
           />
@@ -534,6 +636,6 @@ export default function Dashboard() {
           <p className="text-xs text-cyan-300/90 mt-1">{userStatus.royaltyPayoutsReceived} / LifeTime</p>
         </div>
       </div>
-    </div>
+    </div >
   );
 }
