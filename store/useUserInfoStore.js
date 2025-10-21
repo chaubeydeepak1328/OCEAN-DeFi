@@ -11,18 +11,18 @@ import { dayShortFromUnix } from "../src/utils/helper";
 const Contract = {
   UserRegistry: "0x71Ce2E2Af312e856b17d901aCDbE4ea39831C961",
   CoreConfig: "0x88feEF32db83e79BbD69c222851e45cD681D6a62",
-  RoiDistribution: "0xc7CC6f2C738646472E8bfF6d7BDFB2A82e70bafd",
-  PortFolioManager: "0x09759B02B87927DB3BABc85aE7AE0f1F70C9a604",
+  RoiDistribution: "0x95AeF6C4d06BcD7913F3EEd02A60Baf7Ef0b3584",
+  PortFolioManager: "0xc9Fb0f8EAE5b98cd914f23dd66e277eeC5993a66",
   RoyaltyManager: "0xB953ccFe1d34BB413A0A7000259708E1ef3ca8d3",
   SlabManager: "0x631a0381473f9bC9B43Df75D67fd36E6bd3E3685",
-  IncomeDistributor: "0x7d9666a5230E64B24d940F89d7eb46F1Bc5C519F",
+  IncomeDistributor: "0xBdbA28a842e3c48f039b7f390aa90AEB000E352e",
   FreezePolicy: "0xDd09016976B8B5F550984c4B4E1FEAe4B30536e5",
   RewardVault: "0x6D96990EBF016d51e9399fE48C770c3336437Dc8",
   AdminControl: "0xcD8eB92E927Aa9C0DC5e58d8383D4aE211F73f96",
   MainWallet: "0x61d66989f2fA03818Fcf2f4dCb586C17D4fa9c47",
   SafeWallet: "0x58514DE6CCd50CF33d2bD90547847E212Ae93f11",
-  OceanViewUpgradeable: "0x449E6d26f1a65E991e129f5320d65a62C896aA8a",
-  OceanQueryUpgradeable: "0x9F992D83Cbfc6BAb84749EBE9Bd90Bc8b51851b9",
+  OceanViewUpgradeable: "0xB1dA6010aCf502daaDD0aE40D03c40A686EE27c9",
+  OceanQueryUpgradeable: "0x6bF2Fdcd0D0A79Ba65289d8d5EE17d4a6C2EC3e5",
 };
 
 const INFURA_URL = "https://blockchain.ramestta.com";
@@ -303,7 +303,7 @@ export const useStore = create((set, get) => ({
 
       return {
         // directChildrenCount: toNum(referralCountRaw),
-        safeWalletRAMAWei: parseFloat(safeWalletBalanceRaw)/1e6, // keep as string/BigInt; format at render
+        safeWalletRAMAWei: parseFloat(safeWalletBalanceRaw) / 1e6, // keep as string/BigInt; format at render
         slabPanel: slabPanelRaw,                // map fields if needed
         accuredGrowth
       };
@@ -440,7 +440,7 @@ export const useStore = create((set, get) => ({
     }
   },
 
-  CreateportFolio: async (userAddress, sponsorInput,amt=10) => {
+  CreateportFolio: async (userAddress, sponsorInput, amt = 10) => {
     console.log('CreateportFolio args:', userAddress, sponsorInput);
     try {
       if (!userAddress || typeof userAddress !== 'string' || !userAddress.startsWith('0x')) {
@@ -482,9 +482,7 @@ export const useStore = create((set, get) => ({
       console.log(sponsorAddress, valueToSend.toString(), valueToSend)
 
       // --- 2) Build tx: createPortfolio(usdAmountMicro, referrer) PAYABLE
-      const data = pm.methods
-        .createPortfolio(sponsorAddress, valueToSend)
-        .encodeABI();
+      const data = pm.methods.RegisterAndActivate(sponsorAddress, valueToSend).encodeABI();
 
       // --- 3) Gas price & gas limit (estimate against PortfolioManager, include "value")
       const gasPrice = await web3.eth.getGasPrice();
@@ -526,8 +524,6 @@ export const useStore = create((set, get) => ({
       throw error;
     }
   },
-
-
 
   // =====================================================================
   // PortFolio Withdrawal
@@ -638,9 +634,9 @@ export const useStore = create((set, get) => ({
       );
 
       const safeWalletBalanceRaw = await oceanQuery.methods.getSafeWalletBalance(userAddress).call()
-      const SafeWalletFund = parseFloat(safeWalletBalanceRaw)/1e6;
+      const SafeWalletFund = parseFloat(safeWalletBalanceRaw) / 1e6;
 
-      console.log("safe Wallet fund",SafeWalletFund)
+      console.log("safe Wallet fund", SafeWalletFund)
 
       return SafeWalletFund
 
@@ -711,8 +707,11 @@ export const useStore = create((set, get) => ({
   },
 
 
-  InvestInPortFolio: async (userAddress, Amt) => {
-    console.log('InvestInPortFolio args:', userAddress, Amt);
+
+
+
+  CreateSelfPort: async (userAddress, Amt) => {
+    console.log('CreateSelfPort args:', userAddress, Amt);
     try {
 
       const pm = new web3.eth.Contract(PortFolioManagerABI, Contract.PortFolioManager);
@@ -722,16 +721,15 @@ export const useStore = create((set, get) => ({
         .getPackageValueInRAMA(usdMicro.toString())
         .call();
 
-      const ramaWei = parseInt(ramaWeiQuoteStr);
-      if (ramaWei <= 0) throw new Error('Invalid RAMA quote (0)');
+      const valueToSend = parseInt(ramaWeiQuoteStr);
+      if (valueToSend <= 0) throw new Error('Invalid RAMA quote (0)');
 
-      const tol = ramaWei / 200; // 0.5%
-      const valueToSend = (ramaWei + tol).toString();
 
-      console.log(sponsorAddress, valueToSend.toString(), ramaWei)
+
+      console.log(sponsorAddress, valueToSend.toString(), valueToSend)
 
       const data = pm.methods
-        .createPortfolio(sponsorAddress, valueToSend)
+        .createPortfolio(valueToSend)
         .encodeABI();
 
       const gasPrice = await web3.eth.getGasPrice();
@@ -767,16 +765,191 @@ export const useStore = create((set, get) => ({
 
       return tx; // your wallet (AppKit/WalletConnect) will sign & send this
     } catch (error) {
-      console.error('InvestInPortFolio error:', error);
-      Swal.fire({ icon: 'error', title: 'Portfolio creation error', text: error?.message || 'Unknown error' });
+      console.error('CreateSelfPort error:', error);
+      Swal.fire({ icon: 'error', title: 'CreateSelfPort error', text: error?.message || 'Unknown error' });
       throw error;
     }
   },
 
+  CreateOtherfPort: async (userAddress,toBeActivatedUSer , Amt) => {
+    console.log('CreateOtherfPort args:', userAddress,toBeActivatedUSer , Amt);
+    try {
+      const pm = new web3.eth.Contract(PortFolioManagerABI, Contract.PortFolioManager);
+
+      const usdMicro = Amt * 1e6;
+      const ramaWeiQuoteStr = await pm.methods
+        .getPackageValueInRAMA(usdMicro.toString())
+        .call();
+
+      const valueToSend = parseInt(ramaWeiQuoteStr);
+      if (valueToSend <= 0) throw new Error('Invalid RAMA quote (0)');
+
+      console.log(sponsorAddress, valueToSend.toString(), valueToSend)
+
+      const data = pm.methods
+        .createPortfolioForOthers(toBeActivatedUSer ,userAddress,Amt)
+        .encodeABI();
+
+      const gasPrice = await web3.eth.getGasPrice();
+
+      let gasLimit;
+      try {
+        gasLimit = await web3.eth.estimateGas({
+          from: userAddress,
+          to: Contract.PortFolioManager,
+          data,
+          value: valueToSend,
+        });
+      } catch (err) {
+        console.error('Gas estimation failed:', err);
+        Swal.fire({
+          icon: 'error',
+          title: 'Gas estimation failed',
+          text: err?.message || 'Check contract & inputs.',
+        });
+        throw err;
+      }
+
+      const toHex = web3.utils.toHex;
+
+      const tx = {
+        from: userAddress,
+        to: Contract.PortFolioManager,   // ✅ correct target (PM)
+        data,
+        value: valueToSend,       // ✅ must send RAMA wei
+        gas: toHex(gasLimit),
+        gasPrice: toHex(gasPrice),
+      };
+
+      return tx; // your wallet (AppKit/WalletConnect) will sign & send this
+    } catch (error) {
+      console.error('CreateOtherfPort error:', error);
+      Swal.fire({ icon: 'error', title: 'CreateOtherfPort error', text: error?.message || 'Unknown error' });
+      throw error;
+    }
+  },
+
+  SafeSelfPort: async (userAddress, Amt) => {
+    console.log('SafeSelfPort args:', userAddress, Amt);
+    try {
+
+      const pm = new web3.eth.Contract(PortFolioManagerABI, Contract.PortFolioManager);
+
+      const usdMicro = Amt * 1e6;
+      const ramaWeiQuoteStr = await pm.methods
+        .getPackageValueInRAMA(usdMicro.toString())
+        .call();
+
+      const valueToSend = parseInt(ramaWeiQuoteStr);
+      if (valueToSend <= 0) throw new Error('Invalid RAMA quote (0)');
 
 
 
+      console.log(sponsorAddress, valueToSend.toString(), valueToSend)
 
+      const data = pm.methods
+        .createPortfolioFromSafe(userAddress,valueToSend,userAddress)
+        .encodeABI();
+
+      const gasPrice = await web3.eth.getGasPrice();
+
+      let gasLimit;
+      try {
+        gasLimit = await web3.eth.estimateGas({
+          from: userAddress,
+          to: Contract.PortFolioManager,
+          data,
+          value: valueToSend,
+        });
+      } catch (err) {
+        console.error('Gas estimation failed:', err);
+        Swal.fire({
+          icon: 'error',
+          title: 'Gas estimation failed',
+          text: err?.message || 'Check contract & inputs.',
+        });
+        throw err;
+      }
+
+      const toHex = web3.utils.toHex;
+
+      const tx = {
+        from: userAddress,
+        to: Contract.PortFolioManager,   // ✅ correct target (PM)
+        data,
+        value: valueToSend,       // ✅ must send RAMA wei
+        gas: toHex(gasLimit),
+        gasPrice: toHex(gasPrice),
+      };
+
+      return tx; // your wallet (AppKit/WalletConnect) will sign & send this
+    } catch (error) {
+      console.error('SafeSelfPort error:', error);
+      Swal.fire({ icon: 'error', title: 'SafeSelfPort error', text: error?.message || 'Unknown error' });
+      throw error;
+    }
+  },
+
+  SafeOtherPort: async (userAddress,beneficiary , Amt) => {
+    console.log('SafeOtherPort args:', userAddress, Amt);
+    try {
+
+      const pm = new web3.eth.Contract(PortFolioManagerABI, Contract.PortFolioManager);
+
+      const usdMicro = Amt * 1e6;
+      const ramaWeiQuoteStr = await pm.methods
+        .getPackageValueInRAMA(usdMicro.toString())
+        .call();
+
+      const valueToSend = parseInt(ramaWeiQuoteStr);
+      if (valueToSend <= 0) throw new Error('Invalid RAMA quote (0)');
+
+
+
+      console.log(sponsorAddress, valueToSend.toString(), valueToSend)
+
+      const data = pm.methods
+        .createPortfolioForOthersFromSafe(userAddress,beneficiary,valueToSend,userAddress)
+        .encodeABI();
+
+      const gasPrice = await web3.eth.getGasPrice();
+
+      let gasLimit;
+      try {
+        gasLimit = await web3.eth.estimateGas({
+          from: userAddress,
+          to: Contract.PortFolioManager,
+          data,
+          value: valueToSend,
+        });
+      } catch (err) {
+        console.error('Gas estimation failed:', err);
+        Swal.fire({
+          icon: 'error',
+          title: 'Gas estimation failed',
+          text: err?.message || 'Check contract & inputs.',
+        });
+        throw err;
+      }
+
+      const toHex = web3.utils.toHex;
+
+      const tx = {
+        from: userAddress,
+        to: Contract.PortFolioManager,   // ✅ correct target (PM)
+        data,
+        value: valueToSend,       // ✅ must send RAMA wei
+        gas: toHex(gasLimit),
+        gasPrice: toHex(gasPrice),
+      };
+
+      return tx; // your wallet (AppKit/WalletConnect) will sign & send this
+    } catch (error) {
+      console.error('SafeOtherPort error:', error);
+      Swal.fire({ icon: 'error', title: 'CreateSelfPort error', text: error?.message || 'Unknown error' });
+      throw error;
+    }
+  },
 
 
 }));

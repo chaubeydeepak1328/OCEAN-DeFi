@@ -10,10 +10,10 @@ import { useTransaction } from "../../config/register";
 
 export default function StakeInvest() {
   const [stakeType, setStakeType] = useState('self');
+  const [useWallet, setUseWallet] = useState('external');
   const [beneficiaryAddress, setBeneficiaryAddress] = useState('');
   const [isValidatingAddress, setIsValidatingAddress] = useState(false);
   const [addressValidation, setAddressValidation] = useState(null);
-  const [useWallet, setUseWallet] = useState('external');
   const [showInstructions, setShowInstructions] = useState(false);
   const [isStaking, setIsStaking] = useState(false);
 
@@ -21,7 +21,7 @@ export default function StakeInvest() {
   const [ramaStake, SetramaStake] = useState('')
   const [walletBalance, setWalletBalance] = useState();
   const [safeWalletBalance, setSafeWalletBalance] = useState(0);
-  const [ramaPrice,setRamaPrice] = useState(0)
+  const [ramaPrice, setRamaPrice] = useState(0)
 
 
 
@@ -88,20 +88,26 @@ export default function StakeInvest() {
 
     setIsStaking(true);
 
-   
+
   };
 
   //  =================================================================
-  //  InvestInPortFolio
+  //  Invest In PortFolio
   // ==================================================================
   const userAddress = localStorage.getItem("userAddress") || null;
 
 
 
-  const InvestInPortFolio = useStore((s) => s.InvestInPortFolio);
+  const CreateSelfPort = useStore((s) => s.CreateSelfPort);
+  const CreateOtherfPort = useStore((s) => s.CreateOtherfPort);
+  const SafeSelfPort = useStore((s) => s.SafeSelfPort);
+  const SafeOtherPort = useStore((s) => s.SafeOtherPort);
+
+
+
   const GetchStakeInvest = useStore((s) => s.GetchStakeInvest);
   const usdToRama = useStore((s) => s.usdToRama);
-  const RamaTOUsd =useStore((s)=>s.RamaTOUsd);
+  const RamaTOUsd = useStore((s) => s.RamaTOUsd);
 
 
   const PriceConv = async (amt) => {
@@ -114,7 +120,7 @@ export default function StakeInvest() {
     }
   }
 
-  const GetRamaToUsd = async()=>{
+  const GetRamaToUsd = async () => {
     try {
       const res = await RamaTOUsd(1);
       console.log(res)
@@ -124,13 +130,13 @@ export default function StakeInvest() {
     }
   }
 
-  useEffect(()=>{
+  useEffect(() => {
     GetRamaToUsd()
-  },[])
-  
+  }, [])
+
 
   useEffect(() => {
-    if (stakeAmount!=='0') {
+    if (stakeAmount !== '0') {
       PriceConv(stakeAmount);
     }
   }, [stakeAmount])
@@ -161,8 +167,6 @@ export default function StakeInvest() {
       setTrxHash(hash)
     }
   }, [hash]);
-
-
 
 
 
@@ -202,9 +206,21 @@ export default function StakeInvest() {
     setError('');
 
     try {
+      
+      let response;
 
-
-      const response = await InvestInPortFolio(address, stakeAmount);
+      if (stakeType === 'self'&&useWallet=='external') {
+        response = await CreateSelfPort(address, stakeAmount);
+      }
+      if (stakeType === 'other'&&useWallet=='external') {
+        response = await CreateOtherfPort(address,beneficiaryAddress,stakeAmount);
+      }
+      if (stakeType === 'self'&&useWallet=='safe') {
+        response = await SafeSelfPort(address, stakeAmount);
+      }
+      if (stakeType === 'other'&&useWallet=='safe') {
+        response = await SafeOtherPort(address,beneficiaryAddress, stakeAmount);
+      }
 
       if (response) {
         setTrxData(response); // ✅ this triggers the useEffect
@@ -498,7 +514,7 @@ export default function StakeInvest() {
                   </button>
                 </div>
 
-                {stakeAmount <0 && !isSufficientBalance && (
+                {stakeAmount < 0 && !isSufficientBalance && (
                   <div className="mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg flex items-start gap-2">
                     <AlertCircle className="text-red-400 flex-shrink-0 mt-0.5" size={16} />
                     <div className="flex-1">
@@ -515,7 +531,7 @@ export default function StakeInvest() {
               </div>
 
               <button
-                onClick={handleStakeNow}
+                onClick={CreateNewPortFolio}
                 disabled={!canStake || isStaking}
                 className={`w-full cursor-pointer py-4 rounded-lg bg-cyan-900 font-bold uppercase tracking-wide transition-all relative overflow-hidden group ${canStake && !isStaking
                   ? 'bg-gradient-to-r from-cyan-500 to-cyan-800 text-dark-950 hover:shadow-neon-cyan hover:scale-[1.02] cursor-pointer'
@@ -712,7 +728,7 @@ export default function StakeInvest() {
             </div>
           )}
 
-          {stakeAmount< 0 && (
+          {stakeAmount < 0 && (
             <div className="cyber-glass border border-red-500/50 rounded-xl p-4 flex gap-3 animate-in fade-in slide-in-from-bottom-4 duration-300">
               <AlertCircle className="text-red-400 flex-shrink-0 animate-pulse" size={20} />
               <div>
@@ -729,7 +745,7 @@ export default function StakeInvest() {
       {/* Mobile Sticky Bottom Bar */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 p-4 cyber-glass border-t border-cyan-500/30 backdrop-blur-xl z-50">
         <button
-          onClick={handleStakeNow}
+          onClick={CreateNewPortFolio}
           disabled={!canStake || isStaking}
           className={`w-full py-4 rounded-lg font-bold uppercase tracking-wide transition-all relative overflow-hidden ${canStake && !isStaking
             ? 'bg-gradient-to-r from-cyan-500 to-neon-green text-dark-950'

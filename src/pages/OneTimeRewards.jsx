@@ -1,22 +1,58 @@
 import { Gift, CheckCircle, Lock } from 'lucide-react';
-import { ONE_TIME_REWARDS, formatUSD, getMockUserStatus } from '../utils/contractData';
+import { formatUSD } from '../utils/contractData';
 
-// Ocean-themed one-time reward names with symbolic meanings
+
+
+const USD_PRECISION = 100000000;
+
+function getMockUserStatus() {
+  return {
+    currentSlabIndex: '3',
+    qualifiedVolumeUSD: (12500 * USD_PRECISION).toString(),
+    directChildrenCount: '4',
+    nextSlabClaimRequiresDirects: '0',
+    currentRoyaltyLevelIndex: '2',
+    royaltyPayoutsReceived: '3',
+    royaltyRenewalVolumeRequiredUSD: (13750 * USD_PRECISION).toString(),
+    canClaimRoyalty: true,
+  };
+}
+
+const ONE_TIME_REWARDS = [
+  { requiredVolumeUSD: (6000 * USD_PRECISION).toString(), rewardUSD: (100 * USD_PRECISION).toString() },
+  { requiredVolumeUSD: (15000 * USD_PRECISION).toString(), rewardUSD: (250 * USD_PRECISION).toString() },
+  { requiredVolumeUSD: (40000 * USD_PRECISION).toString(), rewardUSD: (500 * USD_PRECISION).toString() },
+  { requiredVolumeUSD: (60000 * USD_PRECISION).toString(), rewardUSD: (750 * USD_PRECISION).toString() },
+  { requiredVolumeUSD: (120000 * USD_PRECISION).toString(), rewardUSD: (1000 * USD_PRECISION).toString() },
+  { requiredVolumeUSD: (300000 * USD_PRECISION).toString(), rewardUSD: (2500 * USD_PRECISION).toString() },
+  { requiredVolumeUSD: (600000 * USD_PRECISION).toString(), rewardUSD: (5000 * USD_PRECISION).toString() },
+  { requiredVolumeUSD: (1500000 * USD_PRECISION).toString(), rewardUSD: (8000 * USD_PRECISION).toString() },
+  { requiredVolumeUSD: (3000000 * USD_PRECISION).toString(), rewardUSD: (12000 * USD_PRECISION).toString() },
+  { requiredVolumeUSD: (6000000 * USD_PRECISION).toString(), rewardUSD: (30000 * USD_PRECISION).toString() },
+  { requiredVolumeUSD: (15000000 * USD_PRECISION).toString(), rewardUSD: (50000 * USD_PRECISION).toString() },
+  { requiredVolumeUSD: (30000000 * USD_PRECISION).toString(), rewardUSD: (85000 * USD_PRECISION).toString() },
+  { requiredVolumeUSD: (60000000 * USD_PRECISION).toString(), rewardUSD: (150000 * USD_PRECISION).toString() },
+  { requiredVolumeUSD: (200000000 * USD_PRECISION).toString(), rewardUSD: (500000 * USD_PRECISION).toString() },
+  { requiredVolumeUSD: (500000000 * USD_PRECISION).toString(), rewardUSD: (1500000 * USD_PRECISION).toString() },
+];
+
+
 const REWARD_NAMES = [
-  'Coral Spark',        // 1 - $6,000 - First coral forms – the starting treasure
-  'Pearl Bloom',        // 2 - $15,000 - Discovery of the first pearl
-  'Shell Harvest',      // 3 - $40,000 - Collecting valuable shells
-  'Wave Bounty',        // 4 - $120,000 - Riding steady profit waves
-  'Tide Treasure',      // 5 - $300,000 - Strong current brings rewards
-  'Blue Depth Bonus',   // 6 - $600,000 - Diving into deeper value
-  'Guardian\'s Gift',   // 7 - $1.5M - Acknowledgement of leadership
-  'Captain\'s Chest',   // 8 - $3M - Commanding a thriving fleet
-  'Trident Gem',        // 9 - $6M - Mastery of the currents
-  'Sea Legend Award',   // 10 - $15M - Legendary impact
-  'Abyss Crown',        // 11 - $30M - Dominion of the deep
-  'Poseidon\'s Favor',  // 12 - $60M - Blessed by the ocean god
-  'Neptune Scepter',    // 13 - $200M - Rule over vast seas
-  'Ocean Infinity',     // 14 - $500M - Ultimate endless horizon
+  'Coral Spark',
+  'Pearl Bloom',
+  'Shell Harvest',
+  'Monsoon Lift',
+  'Wave Bounty',
+  'Tide Treasure',
+  'Blue Depth Bonus',
+  'Guardian\'s Gift',
+  'Captain\'s Chest',
+  'Trident Gem',
+  'Sea Legend Award',
+  'Abyss Crown',
+  'Poseidon\'s Favor',
+  'Neptune Scepter',
+  'Ocean Infinity',
 ];
 
 export default function OneTimeRewards() {
@@ -94,13 +130,12 @@ export default function OneTimeRewards() {
             return (
               <div
                 key={idx}
-                className={`p-5 rounded-xl border-2 transition-all relative overflow-hidden group ${
-                  isClaimed
-                    ? 'cyber-glass border-neon-green hover:border-neon-green/80'
-                    : isLocked
+                className={`p-5 rounded-xl border-2 transition-all relative overflow-hidden group ${isClaimed
+                  ? 'cyber-glass border-neon-green hover:border-neon-green/80'
+                  : isLocked
                     ? 'cyber-glass border-cyan-500/30 opacity-60'
                     : 'cyber-glass border-cyan-500 hover:border-cyan-600'
-                }`}
+                  }`}
               >
                 {isClaimed && (
                   <div className="absolute inset-0 bg-gradient-to-r from-neon-green/5 to-cyan-500/5" />
@@ -111,19 +146,17 @@ export default function OneTimeRewards() {
                 <div className="flex items-center justify-between gap-4 relative z-10">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
-                        isClaimed
-                          ? 'bg-gradient-to-br from-neon-green to-cyan-500 text-dark-950'
-                          : isLocked
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${isClaimed
+                        ? 'bg-gradient-to-br from-neon-green to-cyan-500 text-dark-950'
+                        : isLocked
                           ? 'cyber-glass border border-cyan-500/30 text-cyan-400/50'
                           : 'bg-gradient-to-br from-cyan-500 to-neon-green text-dark-950'
-                      }`}>
+                        }`}>
                         {idx + 1}
                       </div>
                       <div>
-                        <p className={`font-semibold ${
-                          isClaimed ? 'text-neon-green' : isLocked ? 'text-cyan-400/50' : 'text-cyan-300'
-                        }`}>
+                        <p className={`font-semibold ${isClaimed ? 'text-neon-green' : isLocked ? 'text-cyan-400/50' : 'text-cyan-300'
+                          }`}>
                           {REWARD_NAMES[idx]}
                         </p>
                         <p className="text-xs text-cyan-300/60">Reward #{idx + 1}</p>
@@ -135,9 +168,8 @@ export default function OneTimeRewards() {
                   </div>
 
                   <div className="text-right">
-                    <p className={`text-2xl font-bold mb-1 ${
-                      isClaimed ? 'text-neon-green' : isLocked ? 'text-cyan-400/50' : 'text-cyan-300'
-                    }`}>
+                    <p className={`text-2xl font-bold mb-1 ${isClaimed ? 'text-neon-green' : isLocked ? 'text-cyan-400/50' : 'text-cyan-300'
+                      }`}>
                       {formatUSD(reward.rewardUSD)}
                     </p>
                     <div>
