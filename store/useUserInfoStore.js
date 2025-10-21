@@ -734,7 +734,7 @@ export const useStore = create((set, get) => ({
 
 
 
-      console.log(sponsorAddress, valueToSend.toString(), valueToSend)
+      console.log(valueToSend.toString(), valueToSend)
 
       const data = pm.methods
         .createPortfolio(valueToSend)
@@ -792,7 +792,7 @@ export const useStore = create((set, get) => ({
       const valueToSend = parseInt(ramaWeiQuoteStr);
       if (valueToSend <= 0) throw new Error('Invalid RAMA quote (0)');
 
-      console.log(sponsorAddress, valueToSend.toString(), valueToSend)
+      console.log(valueToSend.toString(), valueToSend)
 
       const data = pm.methods
         .createPortfolioForOthers(toBeActivatedUSer, userAddress, Amt)
@@ -853,7 +853,7 @@ export const useStore = create((set, get) => ({
 
 
 
-      console.log(sponsorAddress, valueToSend.toString(), valueToSend)
+      console.log(valueToSend.toString(), valueToSend)
 
       const data = pm.methods
         .createPortfolioFromSafe(userAddress, valueToSend, userAddress)
@@ -914,7 +914,7 @@ export const useStore = create((set, get) => ({
 
 
 
-      console.log(sponsorAddress, valueToSend.toString(), valueToSend)
+      console.log( valueToSend.toString(), valueToSend)
 
       const data = pm.methods
         .createPortfolioForOthersFromSafe(userAddress, beneficiary, valueToSend, userAddress)

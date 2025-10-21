@@ -38,7 +38,8 @@ export default function StakeInvest() {
   const selectedWalletBalanceUSD = selectedWalletBalance * ramaPrice;
   const isSufficientBalance = parseFloat(stakeAmount) > 0 && selectedWalletBalanceUSD >= parseFloat(stakeAmount);
   const isMinimumMet = parseFloat(stakeAmount) >= 10;
-  const canStake = isMinimumMet && isSufficientBalance && (stakeType === 'self' || addressValidation?.isValid);
+
+  const canStake = stakeAmount < 10 && isSufficientBalance;
 
   const quickAmounts = [10, 50, 100, 500, 1000, 5000];
 
@@ -83,13 +84,7 @@ export default function StakeInvest() {
     }
   };
 
-  const handleStakeNow = async () => {
-    if (!canStake) return;
 
-    setIsStaking(true);
-
-
-  };
 
   //  =================================================================
   //  Invest In PortFolio
@@ -182,10 +177,10 @@ export default function StakeInvest() {
 
       Swal.fire({
         icon: "success",
-        title: "Registration Successful",
+        title: "Stack Successful",
         html: `
           <div style="text-align:left">
-            <p style="margin:0 0 8px 0">Your registration has been confirmed</p>
+            <p style="margin:0 0 8px 0">Your Stack has been confirmed</p>
           </div>
         `,
       });
@@ -202,24 +197,26 @@ export default function StakeInvest() {
 
 
   const CreateNewPortFolio = async () => {
-    setIsSubmitting(true);
+    setIsStaking(true)
     setError('');
 
     try {
-      
+
       let response;
 
-      if (stakeType === 'self'&&useWallet==='external') {
+      console.log(stakeType, useWallet)
+
+      if (stakeType === 'self' && useWallet === 'external') {
         response = await CreateSelfPort(address, stakeAmount);
       }
-      if (stakeType === 'other'&&useWallet==='external') {
-        response = await CreateOtherfPort(address,beneficiaryAddress,stakeAmount);
+      if (stakeType === 'other' && useWallet === 'external') {
+        response = await CreateOtherfPort(address, beneficiaryAddress, stakeAmount);
       }
-      if (stakeType === 'self'&&useWallet=='safe') {
+      if (stakeType === 'self' && useWallet === 'safe') {
         response = await SafeSelfPort(address, stakeAmount);
       }
-      if (stakeType === 'other'&&useWallet=='safe') {
-        response = await SafeOtherPort(address,beneficiaryAddress, stakeAmount);
+      if (stakeType === 'other' && useWallet === 'safe') {
+        response = await SafeOtherPort(address, beneficiaryAddress, stakeAmount);
       }
 
       if (response) {
@@ -233,12 +230,13 @@ export default function StakeInvest() {
         });
       }
 
-      setIsSubmitting(false)
+      setIsStaking(false)
     } catch (error) {
-      console.error('Registration failed:', error);
+      setIsStaking(false)
+      console.error('setIStaking failed:', error);
       setError('An unexpected error occurred. Please try again.');
     } finally {
-      setIsSubmitting(false);
+      setIsStaking(false);
     }
   };
 
@@ -532,7 +530,7 @@ export default function StakeInvest() {
 
               <button
                 onClick={CreateNewPortFolio}
-                disabled={!canStake || isStaking}
+                disabled={isStaking || !isConnected}
                 className={`w-full cursor-pointer py-4 rounded-lg bg-cyan-900 font-bold uppercase tracking-wide transition-all relative overflow-hidden group ${canStake && !isStaking
                   ? 'bg-gradient-to-r from-cyan-500 to-cyan-800 text-dark-950 hover:shadow-neon-cyan hover:scale-[1.02] cursor-pointer'
                   : 'bg-dark-700/50 text-cyan-400/40'
@@ -541,18 +539,24 @@ export default function StakeInvest() {
                 {!canStake && !isStaking && (
                   <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-cyan-800 opacity-0 group-hover:opacity-100 transition-opacity" />
                 )}
-                <span className="relative z-10 flex items-center justify-center gap-2">
-                  {isStaking ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-dark-950 border-t-transparent"></div>
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      Stake Now {stakeAmount > 0 && `$ ${stakeAmount}`}
-                    </>
-                  )}
-                </span>
+                {isConnected ? (
+                  <span className="relative z-10 flex items-center justify-center gap-2">
+                    {isStaking ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-dark-950 border-t-transparent"></div>
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        Stake Now {stakeAmount > 0 && `$ ${stakeAmount}`}
+                      </>
+                    )}
+                  </span>
+                ):(
+                  <>
+                    Connect Wallet
+                  </>
+                )}
               </button>
 
               {!canStake && stakeAmount < 0 && (

@@ -187,7 +187,7 @@ export default function Dashboard() {
             <p className="text-xs sm:text-sm font-medium text-neon-green uppercase tracking-wide">Total Earned</p>
           </div>
           <NumberPopup
-            value={formatUSD(portfolio.totalEarnedUSD)}
+            value={parseFloat(DashBoardDetail?.dashboardData?.summary?.totalEarnedRamaWei)/1e18 + " RAMA"}
             label="Total Earned"
             className="text-xl sm:text-2xl font-bold mb-2 text-neon-green relative z-10"
           />
@@ -221,7 +221,7 @@ export default function Dashboard() {
             <p className="text-xs sm:text-sm font-medium text-cyan-400 uppercase tracking-wide">Safe Wallet</p>
           </div>
           <NumberPopup
-            value={formatRAMA(DashBoardDetail?.safeWalletRAMAWei)}
+            value={"$"+(parseFloat(DashBoardDetail?.dashboardData?.wallet?.safeWalletUsdMicro)/1e6).toFixed(5)}
             label="Safe Wallet"
             className="text-xl sm:text-2xl font-bold mb-2 text-cyan-400 relative z-10"
           />
@@ -528,7 +528,7 @@ export default function Dashboard() {
             </div>
             <p className="text-sm font-medium text-neon-orange uppercase tracking-wide">Royalty Status</p>
           </div>
-          <p className="text-2xl font-bold text-cyan-300">Level {userStatus.currentRoyaltyLevelIndex}</p>
+          <p className="text-2xl font-bold text-cyan-300">Level {parseFloat(DashBoardDetail?.dashboardData?.summary?.royaltyLevel)}</p>
           <p className="text-xs text-cyan-300/90 mt-1">{userStatus.royaltyPayoutsReceived} / LifeTime</p>
         </div>
       </div>
