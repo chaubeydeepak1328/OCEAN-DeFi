@@ -297,19 +297,6 @@
         "type": "function"
     },
     {
-        "inputs": [],
-        "name": "epochSeconds",
-        "outputs": [
-            {
-                "internalType": "uint32",
-                "name": "",
-                "type": "uint32"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
         "inputs": [
             {
                 "internalType": "address",
@@ -624,17 +611,17 @@
         "outputs": [
             {
                 "internalType": "uint32[]",
-                "name": "periodIds",
+                "name": "dayIds",
                 "type": "uint32[]"
             },
             {
                 "internalType": "uint256[]",
-                "name": "usdPer",
+                "name": "usdPerDay",
                 "type": "uint256[]"
             },
             {
                 "internalType": "uint256[]",
-                "name": "ramaPer",
+                "name": "ramaPerDay",
                 "type": "uint256[]"
             }
         ],
@@ -681,12 +668,12 @@
             },
             {
                 "internalType": "uint32",
-                "name": "fromPeriod",
+                "name": "fromDay",
                 "type": "uint32"
             },
             {
                 "internalType": "uint32",
-                "name": "lastPeriod",
+                "name": "lastDay",
                 "type": "uint32"
             }
         ],
@@ -709,19 +696,6 @@
     {
         "inputs": [],
         "name": "renounceOwnership",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint32",
-                "name": "secs",
-                "type": "uint32"
-            }
-        ],
-        "name": "setEpochSeconds",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
