@@ -378,30 +378,6 @@
         "type": "function"
     },
     {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            },
-            {
-                "internalType": "uint8",
-                "name": "milestones",
-                "type": "uint8"
-            }
-        ],
-        "name": "getAvailableRewards",
-        "outputs": [
-            {
-                "internalType": "uint8[]",
-                "name": "unlockable",
-                "type": "uint8[]"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
         "inputs": [],
         "name": "getChainDetails",
         "outputs": [
@@ -721,87 +697,6 @@
     {
         "inputs": [
             {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            },
-            {
-                "internalType": "uint8",
-                "name": "milestones",
-                "type": "uint8"
-            }
-        ],
-        "name": "getOneTimeRewardStatus",
-        "outputs": [
-            {
-                "components": [
-                    {
-                        "internalType": "uint8",
-                        "name": "idx",
-                        "type": "uint8"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "thresholdUSD",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "rewardUSD",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "bool",
-                        "name": "claimed",
-                        "type": "bool"
-                    }
-                ],
-                "internalType": "struct OceanQueryUpgradeable.RewardMilestoneStatus[]",
-                "name": "list",
-                "type": "tuple[]"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "getPlatformRules",
-        "outputs": [
-            {
-                "components": [
-                    {
-                        "internalType": "uint256",
-                        "name": "minStakeUSD",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint16",
-                        "name": "claimFeeBps",
-                        "type": "uint16"
-                    },
-                    {
-                        "internalType": "uint16",
-                        "name": "exitFeeBps",
-                        "type": "uint16"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "capX",
-                        "type": "uint256"
-                    }
-                ],
-                "internalType": "struct OceanQueryUpgradeable.PlatformRules",
-                "name": "r",
-                "type": "tuple"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
                 "internalType": "uint256",
                 "name": "pid",
                 "type": "uint256"
@@ -1011,25 +906,6 @@
                 "internalType": "struct OceanQueryUpgradeable.RoyaltyLevelInfo",
                 "name": "info",
                 "type": "tuple"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "getRoyaltyPayoutsReceived",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "totalPaidMonths",
-                "type": "uint256"
             }
         ],
         "stateMutability": "view",
@@ -1389,11 +1265,59 @@
                 "type": "address"
             }
         ],
+        "name": "getTotalEarnings",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "totalUsdWad",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "totalRamaWei",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            }
+        ],
         "name": "getTotalRewardsClaimed",
         "outputs": [
             {
                 "internalType": "uint256",
                 "name": "count",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            }
+        ],
+        "name": "getTotalStakedAmount",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "totalRamaWei",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "totalUsdMicro",
                 "type": "uint256"
             }
         ],
@@ -1641,30 +1565,6 @@
                 "internalType": "address",
                 "name": "user",
                 "type": "address"
-            }
-        ],
-        "name": "getWithdrawalFreezeStatus",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "hasFreeze",
-                "type": "bool"
-            },
-            {
-                "internalType": "uint64",
-                "name": "earliestEnd",
-                "type": "uint64"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
             },
             {
                 "internalType": "uint8",
@@ -1790,6 +1690,19 @@
         "inputs": [
             {
                 "internalType": "address",
+                "name": "_config",
+                "type": "address"
+            }
+        ],
+        "name": "setRates",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
                 "name": "newOwner",
                 "type": "address"
             }
@@ -1828,25 +1741,6 @@
         "name": "upgradeToAndCall",
         "outputs": [],
         "stateMutability": "payable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "a",
-                "type": "address"
-            }
-        ],
-        "name": "validateBeneficiaryAddress",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "pure",
         "type": "function"
     }
 ]

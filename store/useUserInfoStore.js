@@ -13,6 +13,8 @@ import OceanViewABI from './Contract_ABI/OceanView.json'
 import IncomeDistributorABI from './Contract_ABI/IncomeDistributor.json'
 import RoyaltyManagerABI from './Contract_ABI/RoyaltyManager.json'
 import RewardVaultABI from './Contract_ABI/RewardVault.json'
+import OceanicViewABI from './Contract_ABI/OceanicView.json'
+
 
 const Contract = {
   UserRegistry: "0x71Ce2E2Af312e856b17d901aCDbE4ea39831C961",
@@ -31,7 +33,8 @@ const Contract = {
   OceanQueryUpgradeable: "0x6bF2Fdcd0D0A79Ba65289d8d5EE17d4a6C2EC3e5",
   PRICEORACLE: "0xda2ad06b05Eb1b12F41bBd78724ea13cA710f4e0",
   RAMA: "0xB68295562a686f935d85A72160D1cE4c963cdeA7",
-  OceanViewV2: "0x8f93fdf9A72574F9bbD40437EA1a88559082CaDD"
+  OceanViewV2: "0x8f93fdf9A72574F9bbD40437EA1a88559082CaDD",
+  OceanicView: "0x97879b4d8a3f7aF20Ad766dacEE1b05497129397"
 };
 
 const INFURA_URL = "https://blockchain.ramestta.com";
@@ -40,6 +43,18 @@ const web3 = new Web3(INFURA_URL);
 
 const fromMicroUSD = (value) => toNumber(value) / USD_MICRO;
 const fromWadToUsd = (value) => toNumber(value) / 1e18;
+const formatTeamVolume = (raw) => {
+  if (raw == null) return 0;
+  const amount = Number(raw);
+  if (!Number.isFinite(amount) || amount === 0) return 0;
+  if (Math.abs(amount) >= 1e6) {
+    return amount / 1e6;
+  }
+  if (Math.abs(amount) < 1) {
+    return amount * 1e6;
+  }
+  return amount;
+};
 
 const toNumber = (value) => {
   if (value === null || value === undefined) return 0;
@@ -271,15 +286,10 @@ export const useStore = create((set, get) => ({
       if (!userAddress) {
         return;
       }
-
-
       const contract = new web3.eth.Contract(PortFolioManagerABI, Contract["PortFolioManager"]);
       const contract1 = new web3.eth.Contract(OceanQueryUpgradeableABI, Contract["OceanQueryUpgradeable"]);
 
-
       const ArrPortfolio = await contract.methods.portfoliosOf(userAddress).call();
-
-      console.log("=====>", ArrPortfolio)
 
       let ProtFolioDetail;
       if (ArrPortfolio.length > 0) {
@@ -331,14 +341,16 @@ export const useStore = create((set, get) => ({
         Contract["SafeWallet"]
       );
 
+      const OceanicViewCont = new web3.eth.Contract(OceanicViewABI, Contract["OceanicView"]);
 
 
       // Fire all calls at once
-      const [dashboardData, safeWalletBalanceRaw, slabPanelRaw] = await Promise.all([
+      const [dashboardData, safeWalletBalanceRaw, slabPanelRaw, GrantTotalEarn] = await Promise.all([
 
         OceanViewV2.methods.getDashboardData(userAddress).call(),
         safeWallCont.methods.balanceOf(userAddress).call(),
         oceanView.methods.getSlabPanel(userAddress).call(),
+        OceanicViewCont.methods.getGrandTotalEarned(userAddress).call()
       ]);
 
 
@@ -348,7 +360,8 @@ export const useStore = create((set, get) => ({
         // directChildrenCount: toNum(referralCountRaw),
         safeWalletRAMAWei: parseFloat(safeWalletBalanceRaw) / 1e6, // keep as string/BigInt; format at render
         slabPanel: slabPanelRaw,                // map fields if needed
-        dashboardData
+        dashboardData,
+        GrantTotalEarn
       };
 
     } catch (error) {
@@ -403,10 +416,12 @@ export const useStore = create((set, get) => ({
         Contract["OceanQueryUpgradeable"]
       );
       const slabManager = makeContract(SlabManagerABI, Contract["SlabManager"]);
+
       const portfolioManager = makeContract(
         PortFolioManagerABI,
         Contract["PortFolioManager"]
       );
+
 
       const todayDayId = Math.floor(Date.now() / 86400000);
       let summary = null;
@@ -1604,7 +1619,7 @@ export const useStore = create((set, get) => ({
 
 
 
-   // =====================================================================
+  // =====================================================================
   // Royalty Program
   // =====================================================================
 
@@ -1804,10 +1819,279 @@ export const useStore = create((set, get) => ({
   },
 
 
-  
+
   // =====================================================================
   // One-Time Rewards 
   // =====================================================================
+
+  getTeamNetworkData: async (userAddress, options = {}) => {
+    try {
+      if (!hasAddress(userAddress)) {
+        throw new Error('Invalid user address');
+      }
+
+      const userRegistry = makeContract(
+        UserRegistryABI,
+        Contract["UserRegistry"]
+      );
+      if (!userRegistry) {
+        throw new Error('UserRegistry contract unavailable');
+      }
+
+      const incomeDistributor = makeContract(
+        IncomeDistributorABI,
+        Contract["IncomeDistributor"]
+      );
+      const oceanQuery = makeContract(
+        OceanQueryUpgradeableABI,
+        Contract["OceanQueryUpgradeable"]
+      );
+
+      const maxDepthInput = Number.isFinite(Number(options.maxDepth))
+        ? Number(options.maxDepth)
+        : 5;
+      const maxDepth = Math.min(Math.max(maxDepthInput, 1), 10);
+      const detailLimit = Number.isFinite(Number(options.detailLimit))
+        ? Math.max(1, Number(options.detailLimit))
+        : 50;
+
+      const [directAddressesRaw, levelCountsRaw] = await Promise.all([
+        userRegistry.methods.getDirectTeam(userAddress).call(),
+        userRegistry.methods.getLevelTeamCounts(userAddress, maxDepth).call(),
+      ]);
+
+      const directAddresses = Array.isArray(directAddressesRaw)
+        ? directAddressesRaw.filter(hasAddress)
+        : [];
+      const directCount = directAddresses.length;
+
+      const levelCounts = Array.isArray(levelCountsRaw)
+        ? levelCountsRaw.map(toNumber)
+        : [];
+      const totalTeamSize = levelCounts.reduce((sum, val) => sum + toNumber(val), 0);
+
+      const levelPromises = [];
+      for (let level = 1; level <= maxDepth; level += 1) {
+        levelPromises.push(
+          userRegistry.methods
+            .getLevelTeam(userAddress, level)
+            .call()
+            .then((addresses) => ({
+              level,
+              addresses: Array.isArray(addresses)
+                ? addresses.filter(hasAddress)
+                : [],
+            }))
+            .catch((err) => {
+              console.warn(`UserRegistry.getLevelTeam failed for L${level}:`, err);
+              return { level, addresses: [] };
+            })
+        );
+      }
+      const levelResults = await Promise.all(levelPromises);
+      const levels = {};
+      levelResults.forEach(({ level, addresses }) => {
+        levels[`L${level}`] = addresses;
+      });
+
+      let teamVolumeSummary = null;
+      if (oceanQuery) {
+        try {
+          const raw = await oceanQuery.methods.getTeamVolume(userAddress).call();
+          const pick = (record, key, index) => {
+            if (!record) return "0";
+            if (record[key] != null) return record[key];
+            if (record[index] != null) return record[index];
+            return "0";
+          };
+          teamVolumeSummary = {
+            qualifiedUsd: formatTeamVolume(fromWadToUsd(pick(raw, "qualifiedUSD", 0))),
+            leg1Usd: formatTeamVolume(fromWadToUsd(pick(raw, "L1", 1))),
+            leg2Usd: formatTeamVolume(fromWadToUsd(pick(raw, "L2", 2))),
+            legRestUsd: formatTeamVolume(fromWadToUsd(pick(raw, "Lrest", 3))),
+          };
+        } catch (err) {
+          console.warn("OceanQuery.getTeamVolume failed:", err);
+        }
+      }
+
+      const detailAddresses = directAddresses.slice(0, detailLimit);
+      const detailPromises = detailAddresses.map(async (addr) => {
+        const safeCall = (promise, label) =>
+          promise.catch((err) => {
+            console.warn(`${label} failed for ${addr}:`, err);
+            return null;
+          });
+
+        const userPromise = safeCall(
+          userRegistry.methods.getUser(addr).call(),
+          "UserRegistry.getUser"
+        );
+
+        const incomePromise =
+          incomeDistributor
+            ? safeCall(
+              incomeDistributor.methods
+                .getDirectIncomeSummary(addr)
+                .call(),
+              "IncomeDistributor.getDirectIncomeSummary"
+            )
+            : Promise.resolve(null);
+
+        const teamVolumePromise =
+          oceanQuery
+            ? safeCall(
+              oceanQuery.methods.getTeamVolume(addr).call(),
+              "OceanQuery.getTeamVolume"
+            )
+            : Promise.resolve(null);
+
+        const stakePromise =
+          oceanQuery
+            ? safeCall(
+              oceanQuery.methods.getTotalStakedAmount(addr).call(),
+              "OceanQuery.getTotalStakedAmount"
+            )
+            : Promise.resolve(null);
+
+        const [info, incomeRaw, teamVolumeRaw, stakeRaw] = await Promise.all([
+          userPromise,
+          incomePromise,
+          teamVolumePromise,
+          stakePromise,
+        ]);
+
+        const pickField = (record, key, index) => {
+          if (!record) return null;
+          if (record[key] != null) return record[key];
+          if (Array.isArray(record) && record[index] != null) return record[index];
+          return null;
+        };
+
+        const directsCount = toNumber(pickField(info, "directsCount", 3));
+        const createdAt = toNumber(pickField(info, "createdAt", 4));
+
+        const lifetimeUsd = incomeRaw
+          ? fromWadToUsd(pickField(incomeRaw, "lifetimeUsd", 1) ?? 0)
+          : null;
+        const lifetimeRama = incomeRaw
+          ? fromWeiToRama(pickField(incomeRaw, "lifetimeRama", 2) ?? 0)
+          : null;
+        const claimableRama = incomeRaw
+          ? fromWeiToRama(pickField(incomeRaw, "claimableRama", 3) ?? 0)
+          : null;
+
+        const teamVolume = teamVolumeRaw
+          ? {
+            qualifiedUsd: formatTeamVolume(
+              fromWadToUsd(pickField(teamVolumeRaw, "qualifiedUSD", 0))
+            ),
+            leg1Usd: formatTeamVolume(
+              fromWadToUsd(pickField(teamVolumeRaw, "L1", 1))
+            ),
+            leg2Usd: formatTeamVolume(
+              fromWadToUsd(pickField(teamVolumeRaw, "L2", 2))
+            ),
+            legRestUsd: formatTeamVolume(
+              fromWadToUsd(pickField(teamVolumeRaw, "Lrest", 3))
+            ),
+          }
+          : null;
+
+        let stakeUsd = null;
+        let stakeRama = null;
+        if (stakeRaw) {
+          const totalUsdMicro = pickField(stakeRaw, "totalUsdMicro", 1);
+          const totalRamaWei = pickField(stakeRaw, "totalRamaWei", 0);
+          stakeUsd =
+            totalUsdMicro != null
+              ? fromMicroUSD(totalUsdMicro)
+              : stakeRaw?.[1]
+                ? fromMicroUSD(stakeRaw[1])
+                : null;
+          stakeRama =
+            totalRamaWei != null
+              ? fromWeiToRama(totalRamaWei)
+              : stakeRaw?.[0]
+                ? fromWeiToRama(stakeRaw[0])
+                : null;
+        }
+
+        return {
+          address: addr,
+          directs: directsCount,
+          joinedAt: createdAt ? new Date(createdAt * 1000) : null,
+          registered: Boolean(pickField(info, "registered", 0)),
+          id: toNumber(pickField(info, "id", 1)),
+          sponsor: pickField(info, "referrer", 2),
+          summary: {
+            lifetimeUsd,
+            lifetimeRama,
+            claimableRama,
+          },
+          stake: {
+            usd: stakeUsd,
+            rama: stakeRama,
+          },
+          teamVolume,
+        };
+      });
+      const directMembers = await Promise.all(detailPromises);
+
+      let directIncomeSummary = null;
+      if (incomeDistributor) {
+        try {
+          const summaryRaw = await incomeDistributor.methods
+            .getDirectIncomeSummary(userAddress)
+            .call();
+          const pick = (record, key, index) => {
+            if (!record) return "0";
+            if (record[key] != null) return record[key];
+            if (record[index] != null) return record[index];
+            return "0";
+          };
+          const entries = toNumber(pick(summaryRaw, "entries", 0));
+          const lifetimeUsdWad = pick(summaryRaw, "lifetimeUsd", 1);
+          const lifetimeRamaWei = pick(summaryRaw, "lifetimeRama", 2);
+          const claimableRamaWei = pick(summaryRaw, "claimableRama", 3);
+          directIncomeSummary = {
+            entries,
+            lifetimeUsd: fromWadToUsd(lifetimeUsdWad),
+            lifetimeRama: fromWeiToRama(lifetimeRamaWei),
+            claimableRama: fromWeiToRama(claimableRamaWei),
+          };
+        } catch (err) {
+          console.warn("IncomeDistributor.getDirectIncomeSummary failed:", err);
+        }
+      }
+
+      const directTeamVolumeSum = directMembers.reduce(
+        (sum, member) => sum + (member.teamVolume?.qualifiedUsd ?? 0),
+        0
+      );
+      const aggregatedTeamVolumeUsd =
+        teamVolumeSummary?.qualifiedUsd ??
+        (directTeamVolumeSum > 0 ? directTeamVolumeSum : null);
+
+      return {
+        directCount,
+        totalTeamSize,
+        levels,
+        levelCounts,
+        directMembers,
+        detailLimit,
+        detailFetched: directMembers.length,
+        directAddresses,
+        directIncomeSummary,
+        teamVolumeSummary,
+        teamVolumeUsd: aggregatedTeamVolumeUsd,
+        fetchedAt: Date.now(),
+      };
+    } catch (error) {
+      console.error('getTeamNetworkData error:', error);
+      throw error;
+    }
+  },
 
   getOneTimeRewardsOverview: async (userAddress) => {
     try {

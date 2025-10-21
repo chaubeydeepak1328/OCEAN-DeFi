@@ -61,6 +61,8 @@ export default function RoyaltyProgram() {
       setError(null);
       try {
         const res = await getRoyaltyOverview(userAddress);
+
+        console.log(res)
         if (!cancelled) setRoyaltyDetails(res);
       } catch (err) {
         console.error(err);
@@ -81,13 +83,13 @@ export default function RoyaltyProgram() {
 
   const tiers = useMemo(() => {
     if (royaltyDetails?.tiers?.length) return royaltyDetails.tiers;
-    return ROYALTY_LEVELS.map((level) => ({
-      thresholdUsd: parseFloat(level.requiredVolumeUSD) / 1e8,
-      monthlyUsd: parseFloat(level.monthlyRoyaltyUSD) / 1e8,
+    return royaltyDetails?.tiers?.map((level) => ({
+      thresholdUsd: parseFloat(level?.thresholdUsd) / 1e8,
+      monthlyUsd: parseFloat(level.monthlyUsd) / 1e8,
     }));
   }, [royaltyDetails]);
 
-  const currentLevel = royaltyDetails?.currentLevel ?? 0;
+  const currentLevel = parseFloat(royaltyDetails?.currentLevel) ?? 0;
   const currentTier = currentLevel > 0 ? tiers[currentLevel - 1] : null;
   const payoutsReceived = royaltyDetails?.paidMonths ?? 0;
   const canClaim = royaltyDetails?.canClaim ?? false;
@@ -144,7 +146,7 @@ export default function RoyaltyProgram() {
               <p className="text-xs opacity-75">Your royalty tier</p>
             </div>
           </div>
-          <p className="text-5xl font-bold mb-2">{currentLevel || '—'}</p>
+          <p className="text-5xl font-bold mb-2">{currentLevel}</p>
           {currentTier && (
             <p className="text-lg opacity-90">
               {formatUSD(currentTier.monthlyUsd)} / month
@@ -203,12 +205,12 @@ export default function RoyaltyProgram() {
           Royalty Tiers
         </h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {tiers.map((tier, idx) => {
+          {tiers?.map((tier, idx) => {
             const levelNum = idx + 1;
             const isAchieved = levelNum <= currentLevel;
             const isCurrent = levelNum === currentLevel;
-            const thresholdUsd = tier.thresholdUsd ?? 0;
-            const monthlyUsd = tier.monthlyUsd ?? 0;
+            const thresholdUsd = parseFloat(tier.thresholdUsd)/1e12 ?? 0;
+            const monthlyUsd = parseFloat(tier.monthlyUsd)/1e12 ?? 0;
 
             return (
               <div

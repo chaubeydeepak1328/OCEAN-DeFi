@@ -31,6 +31,7 @@ import AboutPublic from './pages/AboutPublic';
 import Presentation from './pages/Presentation';
 import OceanDefiGuide from './pages/OceanDefiGuide';
 import SpotIncome from './pages/SpotIncome';
+import TeamMemberDetails from './pages/TeamMemberDetails';
 
 const Approute = () => {
   return (
@@ -59,6 +60,7 @@ const Approute = () => {
           <Route path="stake" element={<StakeInvest />} />
           <Route path="earnings" element={<ClaimEarnings />} />
           <Route path="team" element={<TeamNetwork />} />
+          <Route path="team/:address" element={<TeamMemberDetails />} />
           <Route path="slab" element={<SlabIncome />} />
           <Route path="spot-income" element={<SpotIncome />} />
           <Route path="royalty" element={<RoyaltyProgram />} />

@@ -54,6 +54,7 @@ export default function SlabIncome() {
       setError(null);
       try {
         const res = await getSlabIncomeOverview(userAddress);
+        console.log(res)
         if (!cancelled) setSlabDetails(res);
       } catch (err) {
         console.error(err);
@@ -152,7 +153,7 @@ export default function SlabIncome() {
             </div>
           </div>
           <p className="text-5xl font-bold mb-2 text-neon-green relative z-10">
-            {slabLevel || '—'}
+            {String(slabLevel) || '—'}
           </p>
           <p className="text-lg text-cyan-300 relative z-10">
             {slabLevel > 0 && SLAB_LEVELS[slabLevel - 1]

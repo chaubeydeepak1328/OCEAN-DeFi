@@ -468,7 +468,7 @@ export default function SpotIncome() {
               No direct income entries recorded yet.
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3 overflow-y-auto max-h-[400px]">
               {transactionsNormalized.map((tx, idx) => (
                 <div
                   key={`${tx.timestamp}-${idx}`}

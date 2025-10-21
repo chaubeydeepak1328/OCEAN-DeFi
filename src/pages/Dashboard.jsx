@@ -187,7 +187,9 @@ export default function Dashboard() {
             <p className="text-xs sm:text-sm font-medium text-neon-green uppercase tracking-wide">Total Earned</p>
           </div>
           <NumberPopup
-            value={parseFloat(DashBoardDetail?.dashboardData?.summary?.totalEarnedRamaWei)/1e18 + " RAMA"}
+            // value={parseFloat(DashBoardDetail?.dashboardData?.summary?.totalEarnedRamaWei)/1e18 + " RAMA"}
+            value={parseFloat(DashBoardDetail?.GrantTotalEarn)/1e18}
+
             label="Total Earned"
             className="text-xl sm:text-2xl font-bold mb-2 text-neon-green relative z-10"
           />
@@ -300,7 +302,7 @@ export default function Dashboard() {
                         />
                       </div>
                       <p className="text-xs text-cyan-300/90 mt-1">
-                        {formatUSD(parseFloat(portFolioDetails?.principalUSD) / 1e6)} / {formatUSD((parseFloat(portFolioDetails?.principalUSD) / 1e6) * parseFloat(portFolioDetails?.capPct) / 1e2)}
+                        $0 / {formatUSD(parseFloat(portFolioDetails?.principalUSD) / 1e6)} / {formatUSD((parseFloat(portFolioDetails?.principalUSD) / 1e6) * parseFloat(portFolioDetails?.capPct) / 1e2)}
                         <span className="ml-1 text-neon-green">{portFolioDetails?.booster ? '(250% Cap)' : '(200% Cap)'}</span>
                       </p>
                     </>
