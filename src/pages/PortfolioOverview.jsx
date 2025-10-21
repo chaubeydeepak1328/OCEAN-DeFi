@@ -8,59 +8,420 @@ import {
   RefreshCw,
   Info,
   ArrowUpRight,
-  ArrowDownRight,
 } from "lucide-react";
-import { useState, useEffect } from "react";
-import {
-  getMockPortfolioDetails,
-  getMockUserStatus,
-  formatUSD,
-  formatRAMA,
-} from "../utils/contractData";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useStore } from "../../store/useUserInfoStore";
+import { formatUSD, formatRAMA } from "../utils/contractData";
 import { PortfolioStatus } from "../types/contract";
 import NumberPopup from "../components/NumberPopup";
 import Tooltip from "../components/Tooltip";
 import CopyButton from "../components/CopyButton";
 import ProgressBar from "../components/ProgressBar";
 
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+
+const emptyPortfolio = {
+  status: "No Portfolio",
+  stakedUSD: 0,
+  totalEarnedUSD: 0,
+  maxCapUSD: 0,
+  totalLifetimeEarnedUSD: 0,
+  maxLifetimeEarnableUSD: 0,
+  accruedGrowthUSD: 0,
+  accruedGrowthRAMA: 0,
+  readyToClaimUSD: 0,
+  safeWalletRAMA: 0,
+  safeWalletUsdDisplay: 0,
+  upline: ZERO_ADDRESS,
+  freezeEndsAt: 0,
+  isBooster: false,
+  capProgressPercent: 0,
+  lifetimeProgressPercent: 0,
+  dailyRatePercent: 0,
+  capPct: 0,
+  capProgressBps: 0,
+  principalUsd: 0,
+  pid: null,
+};
+
+const emptyUserStatus = {
+  directChildrenCount: 0,
+  currentSlabIndex: 0,
+  currentRoyaltyLevelIndex: 0,
+  royaltyPayoutsReceived: 0,
+  nextSlabClaimRequiresDirects: 0,
+  qualifiedVolumeUSD: 0,
+};
+
+const microToUsd = (value) => Number(value ?? 0) / 1e6;
+const wadToPercent = (wad) => Number(wad ?? 0) / 1e16;
+const pickNumber = (...candidates) => {
+  for (const candidate of candidates) {
+    if (candidate === undefined || candidate === null) continue;
+    const num = Number(candidate);
+    if (!Number.isNaN(num)) return num;
+  }
+  return 0;
+};
+
+const buildUserStatus = (dashboard) => {
+  if (!dashboard) return { ...emptyUserStatus };
+
+  const slabPanel = dashboard?.slabPanel ?? {};
+  const userStatus = dashboard?.userStatus ?? {};
+
+  const directChildrenCount = Number(
+    slabPanel?.directMembers ?? userStatus?.directs ?? 0
+  );
+  const currentSlabIndex = Number(
+    userStatus?.slabLevel ?? slabPanel?.slabIndex ?? 0
+  );
+  const currentRoyaltyLevelIndex = Number(userStatus?.royaltyLevel ?? 0);
+  const royaltyPayoutsReceived = Number(
+    userStatus?.royaltyPaidMonths ?? dashboard?.royaltyPaidMonths ?? 0
+  );
+  const qualifiedVolumeUSD = Number(
+    userStatus?.qualifiedVolumeUsd ?? slabPanel?.qualifiedVolumeUsd ?? 0
+  );
+  const nextSlabClaimRequiresDirects = slabPanel?.canClaim === false ? 1 : 0;
+
+  return {
+    directChildrenCount,
+    currentSlabIndex,
+    currentRoyaltyLevelIndex,
+    royaltyPayoutsReceived,
+    nextSlabClaimRequiresDirects,
+    qualifiedVolumeUSD,
+  };
+};
+
+const buildPortfolioData = (entry, dashboard) => {
+  const dashboardTotals = dashboard?.totals ?? {};
+  const incomeTotals = dashboard?.incomeTotalsUsd ?? {};
+  const safeWallet = dashboard?.safeWallet ?? {};
+
+  const totalStakedUsd = Number(
+    dashboardTotals.totalStakedUsd ?? dashboardTotals.totalValueUsd ?? 0
+  );
+  const totalStakedRama = Number(dashboardTotals.totalStakedRama ?? 0);
+  const totalEarningsUsd = Number(
+    dashboard?.totalEarningsUsd ?? incomeTotals.total ?? 0
+  );
+  const readyToClaimUsd = Number(
+    dashboard?.totalClaimableUsd ?? incomeTotals.total ?? 0
+  );
+  const accruedGrowthUsd = Number(
+    dashboard?.accruedGrowthUsd ?? incomeTotals.growth ?? readyToClaimUsd
+  );
+
+  const safeWalletRama = Number(safeWallet?.rama ?? 0);
+  const usdPerRama =
+    totalStakedRama > 0 ? totalStakedUsd / totalStakedRama : 0;
+  const safeWalletUsd = Number.isFinite(Number(safeWallet?.usd))
+    ? Number(safeWallet.usd)
+    : safeWalletRama * usdPerRama;
+  const accruedGrowthRAMA =
+    usdPerRama > 0 ? accruedGrowthUsd / usdPerRama : 0;
+
+  const summary = entry?.summary ?? {};
+  const detail = entry?.detail ?? {};
+  const pid = entry?.pid ?? null;
+
+  const principalUsd = pickNumber(
+    summary?.principalUsd,
+    detail?.principalUsdDisplay,
+    microToUsd(summary?.principalUsdRaw),
+    microToUsd(summary?.principalUSD),
+    microToUsd(detail?.principalUsd),
+    microToUsd(detail?.principalUSD)
+  );
+
+  const capPct = pickNumber(summary?.capPct, detail?.capPct, 0);
+  const capProgressBps = pickNumber(
+    summary?.capProgressBps,
+    detail?.capProgressBps,
+    0
+  );
+  const capUsd = pickNumber(
+    summary?.capUsd,
+    microToUsd(summary?.capUsdMicro),
+    microToUsd(detail?.capUsd),
+    principalUsd * (capPct / 100 || 0)
+  );
+  const capProgressPercent = capProgressBps / 100;
+  const earnedUsd = capUsd * (capProgressBps / 10000);
+
+  const booster = Boolean(summary?.booster ?? detail?.booster);
+  const activeFlag = summary?.active ?? detail?.active ?? true;
+  const frozenUntil = Number(
+    summary?.frozenUntil ?? detail?.frozenUntil ?? 0
+  );
+  const dailyRateWad = summary?.dailyRateWad ?? detail?.dailyRateWad ?? 0;
+  const dailyRatePercent = wadToPercent(dailyRateWad);
+
+  const lifetimeMaxUsd = totalStakedUsd * 4;
+  const lifetimeProgressPercent = lifetimeMaxUsd
+    ? (totalEarningsUsd / lifetimeMaxUsd) * 100
+    : 0;
+
+  let status = "No Portfolio";
+  if (pid != null) {
+    status = !activeFlag
+      ? PortfolioStatus.Closed
+      : frozenUntil && frozenUntil * 1000 > Date.now()
+      ? PortfolioStatus.Frozen
+      : PortfolioStatus.Active;
+  }
+
+  return {
+    status,
+    stakedUSD: principalUsd,
+    totalEarnedUSD: earnedUsd,
+    maxCapUSD: capUsd,
+    totalLifetimeEarnedUSD: totalEarningsUsd,
+    maxLifetimeEarnableUSD: lifetimeMaxUsd,
+    accruedGrowthUSD: accruedGrowthUsd,
+    accruedGrowthRAMA,
+    readyToClaimUSD: readyToClaimUsd,
+    safeWalletRAMA: safeWalletRama,
+    safeWalletUsdDisplay: safeWalletUsd,
+    upline: dashboard?.upline ?? dashboard?.userStatus?.referrer ?? ZERO_ADDRESS,
+    freezeEndsAt: frozenUntil,
+    isBooster: booster,
+    capProgressPercent,
+    lifetimeProgressPercent,
+    dailyRatePercent,
+    capPct,
+    capProgressBps,
+    principalUsd,
+    pid,
+  };
+};
+
 export default function PortfolioOverview() {
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState(new Date());
-  const portfolio = getMockPortfolioDetails();
-  const userStatus = getMockUserStatus();
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [portfolio, setPortfolio] = useState(emptyPortfolio);
+  const [userStatus, setUserStatus] = useState(emptyUserStatus);
+  const [portfolioIds, setPortfolioIds] = useState([]);
+  const [selectedPid, setSelectedPid] = useState(null);
+  const [dashboardData, setDashboardData] = useState(null);
+  const [portfolioEntries, setPortfolioEntries] = useState([]);
 
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    setTimeout(() => {
-      setIsRefreshing(false);
-      setLastUpdated(new Date());
-    }, 1500);
-  };
+  const getDashboardDetails = useStore((s) => s.getDashboardDetails);
+  const getPortfolioSummaries = useStore((s) => s.getPortfolioSummaries);
+  const getPortfolioIds = useStore((s) => s.getPortfolioIds);
+  const getPortfolioById = useStore((s) => s.getPortFoliById);
+
+  const userAddressFromStore = useStore((s) => s.userAddress);
+  const userAddress =
+    userAddressFromStore || localStorage.getItem("userAddress") || null;
+
+  const mountedRef = useRef(true);
+
+  useEffect(() => () => {
+    mountedRef.current = false;
+  }, []);
 
   const getTimeAgo = (date) => {
-    const seconds = Math.floor((new Date() - date) / 1000);
+    if (!date) return "—";
+    const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
     if (seconds < 60) return "Just now";
     const minutes = Math.floor(seconds / 60);
     if (minutes < 60) return `${minutes}m ago`;
     const hours = Math.floor(minutes / 60);
-    return `${hours}h ago`;
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
   };
 
-  const portfolioCapProgress =
-    (parseFloat(portfolio.totalEarnedUSD) / parseFloat(portfolio.maxCapUSD)) *
-    100;
-  const globalCapProgress =
-    (parseFloat(portfolio.totalLifetimeEarnedUSD) /
-      parseFloat(portfolio.maxLifetimeEarnableUSD)) *
-    100;
+  const loadData = useCallback(async () => {
+    if (!userAddress) {
+      setPortfolio(emptyPortfolio);
+      setUserStatus(emptyUserStatus);
+      setPortfolioIds([]);
+      setLastUpdated(null);
+      return;
+    }
 
-  const dailyRate = portfolio.isBooster
-    ? parseFloat(portfolio.stakedUSD) >= 5010e8
-      ? 0.8
-      : 0.66
-    : parseFloat(portfolio.stakedUSD) >= 5010e8
-      ? 0.4
-      : 0.33;
+    setLoading(true);
+    setError(null);
+
+    try {
+      const [dashboard, summaries, ids] = await Promise.all([
+        getDashboardDetails(userAddress),
+        getPortfolioSummaries(userAddress),
+        getPortfolioIds(userAddress),
+      ]);
+
+      if (!mountedRef.current) return;
+
+      const normalizedSummaries = Array.isArray(summaries)
+        ? summaries
+        : [];
+      const summaryEntries = normalizedSummaries
+        .map((summary) => ({
+          pid: Number(summary?.pid ?? summary?.[0] ?? 0),
+          summary,
+        }))
+        .filter((item) => Number.isFinite(item.pid) && item.pid >= 0);
+
+      const normalizedIds = Array.isArray(ids)
+        ? ids.map((id) => Number(id)).filter((id) => Number.isFinite(id))
+        : [];
+
+      const detailIds = summaryEntries.length
+        ? summaryEntries.map((item) => item.pid)
+        : normalizedIds;
+
+      const detailResults = detailIds.length
+        ? await Promise.all(
+            detailIds.map(async (pid) => {
+              try {
+                return await getPortfolioById(pid);
+              } catch (detailErr) {
+                console.warn(`getPortfolioDetails(${pid}) failed`, detailErr);
+                return null;
+              }
+            })
+          )
+        : [];
+
+      const detailMap = new Map(
+        detailResults
+          .filter(Boolean)
+          .map((detail) => [Number(detail.pid), detail])
+      );
+
+      let combined = summaryEntries.length
+        ? summaryEntries.map(({ pid, summary }) => ({
+            pid,
+            summary,
+            detail: detailMap.get(pid) ?? null,
+          }))
+        : detailIds.map((pid) => ({
+            pid,
+            summary: null,
+            detail: detailMap.get(pid) ?? null,
+          }));
+
+      if (!combined.length && Array.isArray(dashboard?.portfolios)) {
+        combined = dashboard.portfolios
+          .map((card) => ({
+            pid: Number(card?.pid ?? 0),
+            summary: card,
+            detail: detailMap.get(Number(card?.pid ?? 0)) ?? null,
+          }))
+          .filter((item) => Number.isFinite(item.pid) && item.pid >= 0);
+      }
+
+      setDashboardData(dashboard ?? null);
+      setPortfolioEntries(combined);
+      setLastUpdated(new Date());
+
+      setSelectedPid((prev) => {
+        if (!combined.length) return null;
+        if (
+          prev != null &&
+          combined.some((item) => Number(item.pid) === Number(prev))
+        ) {
+          return prev;
+        }
+        return combined[0]?.pid ?? null;
+      });
+    } catch (err) {
+      if (!mountedRef.current) return;
+      console.error(err);
+      setError(err?.message || "Failed to load portfolio data");
+    } finally {
+      if (mountedRef.current) {
+        setLoading(false);
+        setIsRefreshing(false);
+      }
+    }
+  }, [
+    getDashboardDetails,
+    getPortfolioById,
+    getPortfolioIds,
+    getPortfolioSummaries,
+    userAddress,
+  ]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  useEffect(() => {
+    setUserStatus(buildUserStatus(dashboardData));
+  }, [dashboardData]);
+
+  useEffect(() => {
+    const ids = portfolioEntries
+      .map((item) => Number(item.pid))
+      .filter((pid) => Number.isFinite(pid));
+    setPortfolioIds(ids);
+  }, [portfolioEntries]);
+
+  useEffect(() => {
+    if (!dashboardData) {
+      setPortfolio(buildPortfolioData(null, null));
+      return;
+    }
+
+    if (!portfolioEntries.length) {
+      setPortfolio(buildPortfolioData(null, dashboardData));
+      return;
+    }
+
+    let entry = portfolioEntries.find(
+      (item) => Number(item.pid) === Number(selectedPid)
+    );
+
+    if (!entry) {
+      entry = portfolioEntries[0];
+      if (entry && selectedPid !== entry.pid) {
+        setSelectedPid(entry.pid);
+      }
+    }
+
+    if (!entry) {
+      setPortfolio({ ...emptyPortfolio });
+      return;
+    }
+
+    setPortfolio(buildPortfolioData(entry, dashboardData));
+  }, [selectedPid, portfolioEntries, dashboardData]);
+
+  const handleRefresh = () => {
+    if (!userAddress) return;
+    setIsRefreshing(true);
+    loadData();
+  };
+
+  const handleSelectPid = (event) => {
+    const value = event.target.value;
+    setSelectedPid(value === "" ? null : Number(value));
+  };
+
+  const portfolioCapProgress = Math.max(
+    0,
+    Math.min(100, portfolio.capProgressPercent ?? 0)
+  );
+  const globalCapProgress = Math.max(
+    0,
+    Math.min(100, portfolio.lifetimeProgressPercent ?? 0)
+  );
+  const dailyRateValue = Number.isFinite(portfolio.dailyRatePercent)
+    ? portfolio.dailyRatePercent
+    : 0;
+  const dailyRate = dailyRateValue.toFixed(2);
+  const uplineAddress =
+    typeof portfolio.upline === "string" && portfolio.upline.length >= 10
+      ? portfolio.upline
+      : ZERO_ADDRESS;
+  const uplineDisplay = `${uplineAddress.slice(0, 6)}...${uplineAddress.slice(-4)}`;
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -84,10 +445,11 @@ export default function PortfolioOverview() {
             >
               <RefreshCw
                 size={16}
-                className={`text-cyan-400 ${isRefreshing
+                className={`text-cyan-400 ${
+                  isRefreshing
                     ? "animate-spin"
                     : "group-hover:rotate-180 transition-transform duration-500"
-                  }`}
+                }`}
               />
               <span className="text-xs text-cyan-400 hidden sm:inline">
                 Refresh
@@ -101,11 +463,58 @@ export default function PortfolioOverview() {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2 text-xs text-cyan-400/70">
-          <Clock size={12} />
-          <span>Last updated: {getTimeAgo(lastUpdated)}</span>
-        </div>
+      <div className="flex items-center gap-2 text-xs text-cyan-400/70">
+        <Clock size={12} />
+        <span>Last updated: {getTimeAgo(lastUpdated)}</span>
       </div>
+    </div>
+
+      {portfolioIds.length > 0 && (
+        <div className="cyber-glass border border-cyan-500/20 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center gap-3">
+          <label className="text-xs font-semibold text-cyan-300 uppercase tracking-wider">
+            Portfolio ID
+          </label>
+          <div className="relative w-full sm:w-56">
+            <select
+              value={selectedPid ?? ""}
+              onChange={handleSelectPid}
+              className="w-full appearance-none bg-dark-900 border border-cyan-500/30 rounded-lg px-3 py-2 text-sm text-cyan-200 focus:outline-none focus:border-neon-green/60 pr-10"
+            >
+              {portfolioIds.map((pid) => (
+                <option key={pid} value={pid}>
+                  Portfolio #{pid}
+                </option>
+              ))}
+            </select>
+            <svg
+              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 opacity-70"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+            >
+              <path
+                d="M7 10l5 5 5-5"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div className="cyber-glass border border-red-400/40 bg-red-500/10 text-red-200 rounded-xl px-4 py-3 text-sm">
+          {error}
+        </div>
+      )}
+      {loading && !isRefreshing && (
+        <div className="cyber-glass border border-cyan-500/30 text-cyan-200 rounded-xl px-4 py-3 text-sm">
+          Loading portfolio data…
+        </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 animate-fade-in-up">
         <div className="cyber-glass rounded-xl p-4 border border-cyan-500/30 hover:border-cyan-500/80 relative overflow-hidden group transition-all">
@@ -127,27 +536,27 @@ export default function PortfolioOverview() {
             <span className="text-cyan-400/70">vs last month</span>
           </div>
         </div>
-
-        {" "}
-
+        
         <div className="cyber-glass rounded-xl p-4 border border-neon-green/30 hover:border-neon-green/80 relative overflow-hidden group transition-all">
           <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-neon-green/50 to-transparent" />
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs text-neon-green/90 uppercase tracking-wide">
-              Total Earned
+              Lifetime Earnings
             </p>
-            <Tooltip content="Total earnings from portfolio growth, slab income, and rewards combined.">
+            <Tooltip content="Total earnings across all time, including reinvested growth and manual claims.">
               <Info size={12} className="text-neon-green/50" />
             </Tooltip>
           </div>
           <NumberPopup
-            value={formatUSD(portfolio.totalEarnedUSD)}
-            label="Total Earnings"
+            value={formatUSD(portfolio.totalLifetimeEarnedUSD)}
+            label="Lifetime Earnings"
             className="text-xl sm:text-2xl font-bold text-neon-green mb-1"
           />
           <div className="flex items-center gap-1 text-xs">
-            <span className="text-cyan-400/70">Daily Rate:</span>
-            <span className="text-neon-green font-semibold">{dailyRate}%</span>
+            <span className="text-cyan-400/70">Progress to 4× cap:</span>
+            <span className="text-neon-green font-semibold">
+              {globalCapProgress.toFixed(1)}%
+            </span>
           </div>
         </div>
         <div className="cyber-glass rounded-xl p-4 border border-neon-orange/30 hover:border-neon-orange/80 relative overflow-hidden group transition-all">
@@ -161,7 +570,7 @@ export default function PortfolioOverview() {
             </Tooltip>
           </div>
           <NumberPopup
-            value={formatUSD(portfolio.accruedGrowthUSD)}
+            value={formatUSD(portfolio.readyToClaimUSD)}
             label="Available to Claim"
             className="text-xl sm:text-2xl font-bold text-neon-orange mb-1"
           />
@@ -187,7 +596,7 @@ export default function PortfolioOverview() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        <div className="lg:col-span-3 cyber-glass rounded-2xl p-4 sm:p-6 border border-cyan-500/30 hover:border-cyan-500/80 relative overflow-hidden transition-all">
+        <div className="lg:col-span-2 cyber-glass rounded-2xl p-4 sm:p-6 border border-cyan-500/30 hover:border-cyan-500/80 relative overflow-hidden transition-all">
           <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
             <div>
@@ -273,19 +682,261 @@ export default function PortfolioOverview() {
               <p className="text-xs text-cyan-400/80 mt-2">
                 Remaining:{" "}
                 {formatUSD(
-                  parseFloat(portfolio.maxLifetimeEarnableUSD) -
-                  parseFloat(portfolio.totalLifetimeEarnedUSD)
+                  portfolio.maxLifetimeEarnableUSD -
+                    portfolio.totalLifetimeEarnedUSD
                 )}
               </p>
             </div>
           </div>
 
-
+          <div className="mt-6 grid grid-cols-3 gap-2 sm:gap-3 md:gap-4">
+            <div className="p-2.5 sm:p-3 md:p-4 cyber-glass rounded-xl border border-cyan-500/30 hover:border-cyan-500/80 min-w-0 transition-all overflow-hidden">
+              <div className="flex flex-col gap-0.5 mb-1">
+                <p className="text-[10px] sm:text-xs text-cyan-400 font-medium sm:uppercase sm:tracking-wider leading-tight">
+                  Daily Rate
+                </p>
+                <Tooltip content="Your current daily earnings rate based on stake amount and booster status.">
+                  <Info size={8} className="text-cyan-400/50 sm:hidden" />
+                </Tooltip>
+                <Tooltip content="Your current daily earnings rate based on stake amount and booster status.">
+                  <Info
+                    size={10}
+                    className="text-cyan-400/50 hidden sm:inline-block"
+                  />
+                </Tooltip>
+              </div>
+              <p className="text-base sm:text-lg md:text-xl font-bold text-cyan-300 whitespace-nowrap">
+                {dailyRate}%
+              </p>
+            </div>
+            <div className="p-2.5 sm:p-3 md:p-4 cyber-glass rounded-xl border border-neon-green/30 hover:border-neon-green/80 min-w-0 transition-all overflow-hidden">
+              <div className="flex flex-col gap-0.5 mb-1">
+                <p className="text-[10px] sm:text-xs text-neon-green font-medium sm:uppercase sm:tracking-wider leading-tight">
+                  Direct Refs
+                </p>
+                <Tooltip content="Number of users you've directly referred to the platform.">
+                  <Info size={8} className="text-neon-green/50 sm:hidden" />
+                </Tooltip>
+                <Tooltip content="Number of users you've directly referred to the platform.">
+                  <Info
+                    size={10}
+                    className="text-neon-green/50 hidden sm:inline-block"
+                  />
+                </Tooltip>
+              </div>
+              <p className="text-base sm:text-lg md:text-xl font-bold text-neon-green whitespace-nowrap">
+                {userStatus.directChildrenCount}
+              </p>
+            </div>
+            <div className="p-2.5 sm:p-3 md:p-4 cyber-glass rounded-xl border border-neon-orange/30 hover:border-neon-orange/80 min-w-0  transition-all overflow-hidden">
+              <div className="flex flex-col gap-0.5 mb-1">
+                <p className="text-[10px] sm:text-xs text-neon-orange font-medium sm:uppercase sm:tracking-wider leading-tight">
+                  Slab Level
+                </p>
+                <Tooltip content="Your current slab level determines your percentage earnings from your network.">
+                  <Info size={8} className="text-neon-orange/50 sm:hidden" />
+                </Tooltip>
+                <Tooltip content="Your current slab level determines your percentage earnings from your network.">
+                  <Info
+                    size={10}
+                    className="text-neon-orange/50 hidden sm:inline-block"
+                  />
+                </Tooltip>
+              </div>
+              <p className="text-base sm:text-lg md:text-xl font-bold text-neon-orange whitespace-nowrap">
+                {userStatus.currentSlabIndex}
+              </p>
+            </div>
+          </div>
         </div>
 
+        <div className="space-y-4">
+          <div className="cyber-glass border border-neon-green/50 hover:border-neon-green rounded-2xl p-5 sm:p-6 text-white relative overflow-hidden group transition-all">
+            <div className="absolute inset-0 bg-gradient-to-br from-neon-green/10 to-cyan-500/10 opacity-50 group-hover:opacity-70 transition-opacity" />
+            <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-neon-green/70 to-transparent" />
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white/20 rounded-lg flex-shrink-0">
+                    <TrendingUp size={20} className="sm:w-6 sm:h-6" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold opacity-90 truncate">
+                      Accrued Growth
+                    </p>
+                    <p className="text-xs opacity-75 truncate">
+                      Available to claim
+                    </p>
+                  </div>
+                </div>
+                <Tooltip
+                  content="Your portfolio growth earnings that have accumulated and are ready to be claimed."
+                  position="left"
+                >
+                  <Info size={16} className="text-white/60" />
+                </Tooltip>
+              </div>
+          <NumberPopup
+            value={formatUSD(portfolio.accruedGrowthUSD)}
+            label="Accrued Growth"
+            className="text-3xl sm:text-4xl font-bold mb-2 text-neon-glow"
+          />
+          <p className="text-xs opacity-75 mb-4">
+            ≈{" "}
+            {formatRAMA(portfolio.accruedGrowthRAMA)}{" "}
+            RAMA
+          </p>
+              <button className="w-full py-3 sm:py-3.5 bg-gradient-to-r from-neon-green to-cyan-500 hover:from-neon-green hover:to-neon-green text-dark-950 rounded-xl text-sm sm:text-base font-bold transition-all hover:shadow-neon-green hover:scale-[1.02] uppercase tracking-wide group relative overflow-hidden">
+                <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <span className="relative z-10 flex items-center justify-center gap-2">
+                  <span>Claim Now</span>
+                  <ArrowUpRight
+                    size={16}
+                    className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform"
+                  />
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <div className="cyber-glass rounded-2xl p-4 sm:p-6 border border-cyan-500/30 hover:border-cyan-500/80 relative overflow-hidden transition-all">
+            <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 cyber-glass border border-cyan-500/30 rounded-lg flex-shrink-0">
+                <Wallet className="text-cyan-400" size={18} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-cyan-300 truncate uppercase tracking-wide">
+                  Safe Wallet
+                </p>
+                <p className="text-xs text-cyan-300/90 truncate">
+                  Fee-free balance
+                </p>
+              </div>
+            </div>
+            <NumberPopup
+              value={`${formatRAMA(portfolio.safeWalletRAMA)} RAMA`}
+              label="Safe Wallet Balance"
+              className="text-xl sm:text-2xl font-bold text-cyan-300 mb-1"
+            />
+            <NumberPopup
+              value={`≈ ${formatUSD(portfolio.safeWalletUsdDisplay)}`}
+              label="Safe Wallet USD Value"
+              className="text-sm text-cyan-300/90"
+            />
+          </div>
+        </div>
       </div>
 
-     
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="cyber-glass rounded-xl p-4 sm:p-5 border border-cyan-500/30 hover:border-cyan-500/80 relative overflow-hidden transition-all">
+          <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
+          <div className="flex items-center gap-2 mb-3">
+            <div className="p-2 cyber-glass border border-cyan-500/30 rounded-lg flex-shrink-0">
+              <Award className="text-cyan-400" size={18} />
+            </div>
+            <div className="flex items-center gap-1 flex-1 min-w-0">
+              <p className="text-xs sm:text-sm font-medium text-cyan-300 truncate uppercase tracking-wide">
+                Qualified Volume
+              </p>
+              <Tooltip
+                content="Volume calculated using 40:30:30 formula - 40% from strongest leg, 30% from second, 30% from remaining legs."
+                position="bottom"
+              >
+                <Info size={12} className="text-cyan-400/70 flex-shrink-0" />
+              </Tooltip>
+            </div>
+          </div>
+          <NumberPopup
+            value={formatUSD(userStatus.qualifiedVolumeUSD)}
+            label="Qualified Volume"
+            className="text-lg sm:text-xl font-bold text-cyan-300"
+          />
+          <p className="text-xs text-cyan-300/90 mt-1">40:30:30 Formula</p>
+        </div>
+
+        <div className="cyber-glass rounded-xl p-4 sm:p-5 border border-neon-green/30 hover:border-neon-green/80 relative overflow-hidden transition-all">
+          <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-neon-green/50 to-transparent" />
+          <div className="flex items-center gap-2 mb-3">
+            <div className="p-2 cyber-glass border border-neon-green/30 rounded-lg flex-shrink-0">
+              <TrendingUp className="text-neon-green" size={18} />
+            </div>
+            <div className="flex items-center gap-1 flex-1 min-w-0">
+              <p className="text-xs sm:text-sm font-medium text-neon-green truncate uppercase tracking-wide">
+                Royalty Level
+              </p>
+              <Tooltip
+                content="Your royalty tier based on qualified volume. Higher levels unlock monthly royalty payments."
+                position="bottom"
+              >
+                <Info size={12} className="text-neon-green/70 flex-shrink-0" />
+              </Tooltip>
+            </div>
+          </div>
+          <p className="text-lg sm:text-xl font-bold text-cyan-300">
+            Level {userStatus.currentRoyaltyLevelIndex}
+          </p>
+          <p className="text-xs text-cyan-300/90 mt-1">
+            {userStatus.royaltyPayoutsReceived} payments received
+          </p>
+        </div>
+
+        <div className="cyber-glass rounded-xl p-4 sm:p-5 border border-neon-orange/30 hover:border-neon-orange/80  relative overflow-hidden transition-all">
+          <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-neon-orange/50 to-transparent" />
+          <div className="flex items-center gap-2 mb-3">
+            <div className="p-2 cyber-glass border border-neon-orange/30 rounded-lg flex-shrink-0">
+              <Clock className="text-neon-orange" size={18} />
+            </div>
+            <div className="flex items-center gap-1 flex-1 min-w-0">
+              <p className="text-xs sm:text-sm font-medium text-neon-orange truncate uppercase tracking-wide">
+                Next Slab Claim
+              </p>
+              <Tooltip
+                content="Status of your next slab income claim. A 24-hour cooldown applies between claims."
+                position="bottom"
+              >
+                <Info size={12} className="text-neon-orange/70 flex-shrink-0" />
+              </Tooltip>
+            </div>
+          </div>
+          <p className="text-base sm:text-lg font-bold text-cyan-300 truncate">
+            {userStatus.nextSlabClaimRequiresDirects === 1
+              ? "Needs Directs"
+              : "Available"}
+          </p>
+          <p className="text-xs text-cyan-300/90 mt-1">24h cooldown period</p>
+        </div>
+
+        <div className="cyber-glass rounded-xl p-4 sm:p-5 border border-cyan-400/30 hover:border-cyan-400/80 relative overflow-hidden transition-all">
+          <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent" />
+          <div className="flex items-center gap-2 mb-3">
+            <div className="p-2 cyber-glass border border-cyan-400/30 rounded-lg flex-shrink-0">
+              <AlertCircle className="text-cyan-400" size={18} />
+            </div>
+            <div className="flex items-center gap-1 flex-1 min-w-0">
+              <p className="text-xs sm:text-sm font-medium text-cyan-400 truncate uppercase tracking-wide">
+                Upline Sponsor
+              </p>
+              <Tooltip
+                content="The wallet address of the person who referred you to the platform."
+                position="bottom"
+              >
+                <Info size={12} className="text-cyan-400/70 flex-shrink-0" />
+              </Tooltip>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-mono text-cyan-300 truncate flex-1">
+              {uplineDisplay}
+            </p>
+            <CopyButton text={uplineAddress} label="" />
+          </div>
+          <button className="text-xs text-cyan-400 hover:text-neon-green mt-2 transition-colors inline-flex items-center gap-1">
+            <span>View Details</span>
+            <ArrowUpRight size={10} />
+          </button>
+        </div>
+      </div>
 
       {portfolio.status === PortfolioStatus.Frozen && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
@@ -298,7 +949,7 @@ export default function PortfolioOverview() {
             <p className="text-sm text-amber-700 mt-1 break-words">
               Withdrawal freeze active until{" "}
               {new Date(
-                parseInt(portfolio.freezeEndsAt) * 1000
+                (portfolio.freezeEndsAt ?? 0) * 1000
               ).toLocaleString()}
             </p>
           </div>

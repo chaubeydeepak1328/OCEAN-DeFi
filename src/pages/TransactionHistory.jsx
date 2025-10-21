@@ -1,9 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { History, Filter, Download, Search, TrendingUp, Award, Trophy, Gift, Layers, Wallet, ArrowUpRight, ArrowDownRight, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import { formatUSD, formatRAMA } from '../utils/contractData';
-import Web3 from 'web3';
-import OceanViewV2ABI from '../../store/Contract_ABI/OceanView2.json';
-import OceanQueryUpgradeableABI from '../../store/Contract_ABI/OceanQueryUpgradeable.json';
+import { useStore } from '../../store/useUserInfoStore';
 
 const TRANSACTION_TYPES = {
   PORTFOLIO_GROWTH: 'Portfolio Growth',
@@ -18,10 +16,255 @@ const TRANSACTION_TYPES = {
   TRANSFER_TO_SAFE: 'Transfer to Safe Wallet',
 };
 
-// transactions will be loaded from chain
-const OCEAN_QUERY_ADDRESS = '0x6bF2Fdcd0D0A79Ba65289d8d5EE17d4a6C2EC3e5';
-const OCEAN_VIEW_V2_ADDRESS = '0x8f93fdf9A72574F9bbD40437EA1a88559082CaDD';
-const RPC_URL = 'https://blockchain.ramestta.com';
+const SAFEWALLET_KINDS = {
+  ROI: 0,
+  GROWTH: 1,
+  ROYALTY: 2,
+  SLAB: 3,
+  REWARD: 4,
+  DIRECT: 5,
+  MANUAL: 6,
+  STAKE_SPEND: 7,
+  PORTFOLIO_CREATE: 8,
+  PORTFOLIO_TOPUP: 9,
+  WITHDRAW: 10,
+};
+
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
+
+const normalizeUsdDisplay = (value) => {
+  const amount = Number(value ?? 0);
+  if (!Number.isFinite(amount) || amount === 0) return 0;
+  if (Math.abs(amount) >= 1e6) return amount / 1e6;
+  if (Math.abs(amount) < 1) return amount * 1e6;
+  return amount;
+};
+
+const shortenAddress = (addr) => {
+  if (!addr || addr === ZERO_ADDRESS) return null;
+  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+};
+
+const CREDIT_KIND_TO_TYPE = {
+  [SAFEWALLET_KINDS.ROI]: TRANSACTION_TYPES.PORTFOLIO_GROWTH,
+  [SAFEWALLET_KINDS.GROWTH]: TRANSACTION_TYPES.SPOT_INCOME,
+  [SAFEWALLET_KINDS.ROYALTY]: TRANSACTION_TYPES.ROYALTY_INCOME,
+  [SAFEWALLET_KINDS.SLAB]: TRANSACTION_TYPES.SLAB_INCOME,
+  [SAFEWALLET_KINDS.REWARD]: TRANSACTION_TYPES.ONE_TIME_REWARD,
+  [SAFEWALLET_KINDS.DIRECT]: TRANSACTION_TYPES.SPOT_INCOME,
+  [SAFEWALLET_KINDS.MANUAL]: TRANSACTION_TYPES.TRANSFER_TO_SAFE,
+};
+
+const DEBIT_KIND_TO_TYPE = {
+  [SAFEWALLET_KINDS.STAKE_SPEND]: TRANSACTION_TYPES.PORTFOLIO_CREATED,
+  [SAFEWALLET_KINDS.PORTFOLIO_CREATE]: TRANSACTION_TYPES.PORTFOLIO_CREATED,
+  [SAFEWALLET_KINDS.PORTFOLIO_TOPUP]: TRANSACTION_TYPES.PORTFOLIO_CREATED,
+  [SAFEWALLET_KINDS.WITHDRAW]: TRANSACTION_TYPES.CLAIM_TO_WALLET,
+};
+
+const mockTransactions = [
+  {
+    id: 'tx013',
+    type: TRANSACTION_TYPES.SPOT_INCOME,
+    amount_usd: 500,
+    amount_rama: 20.41,
+    source: 'Direct Referral: 0x4567...8901',
+    destination: 'Safe Wallet',
+    timestamp: '2024-10-18 09:30:15',
+    status: 'pending',
+    fee: 0,
+    txHash: '0x27m8n9o0p1q2r3s4t5u6v7w8x9y0z1a2b3c4d5e6f7g8h9i0',
+    spotIncomeDetails: {
+      referralLevel: 'Direct',
+      percentage: 10,
+      fromUser: '0x4567...8901',
+    },
+  },
+  {
+    id: 'tx001',
+    type: TRANSACTION_TYPES.PORTFOLIO_GROWTH,
+    amount_usd: 2850,
+    amount_rama: 116.33,
+    source: 'Daily Growth Accrual',
+    destination: 'Safe Wallet',
+    timestamp: '2024-10-17 14:23:45',
+    status: 'completed',
+    fee: 0,
+    txHash: '0x7a8b9c0d1e2f3g4h5i6j7k8l9m0n1o2p3q4r5s6t7u8v9w0x',
+  },
+  {
+    id: 'tx002',
+    type: TRANSACTION_TYPES.SLAB_INCOME,
+    amount_usd: 1250,
+    amount_rama: 51.02,
+    source: 'Team Member: 0x1234...5678',
+    destination: 'Safe Wallet',
+    timestamp: '2024-10-17 11:15:30',
+    status: 'completed',
+    fee: 0,
+    txHash: '0x8b9c0d1e2f3g4h5i6j7k8l9m0n1o2p3q4r5s6t7u8v9w0x1y',
+    incomeDetails: {
+      slabLevel: 3,
+      percentage: 12,
+      teamMember: '0x1234...5678',
+    },
+  },
+  {
+    id: 'tx003',
+    type: TRANSACTION_TYPES.CLAIM_TO_WALLET,
+    amount_usd: 5000,
+    amount_rama: 204.08,
+    source: 'Portfolio Growth',
+    destination: 'External Wallet',
+    timestamp: '2024-10-16 16:42:18',
+    status: 'completed',
+    fee: 5,
+    feeAmount: 10.20,
+    netAmount: 193.88,
+    txHash: '0x9c0d1e2f3g4h5i6j7k8l9m0n1o2p3q4r5s6t7u8v9w0x1y2z',
+  },
+  {
+    id: 'tx004',
+    type: TRANSACTION_TYPES.PORTFOLIO_CREATED,
+    amount_usd: 15000,
+    amount_rama: 612.24,
+    source: 'Safe Wallet',
+    destination: 'Portfolio #2',
+    timestamp: '2024-10-16 09:30:12',
+    status: 'completed',
+    fee: 0,
+    portfolioDetails: {
+      isBooster: true,
+      commission: 0,
+      walletType: 'Safe Wallet',
+      portfolioId: 'PF-2024-002',
+      growthRate: '0.5% Daily',
+    },
+  },
+  {
+    id: 'tx005',
+    type: TRANSACTION_TYPES.ROYALTY_INCOME,
+    amount_usd: 8000,
+    amount_rama: 326.53,
+    source: 'Monthly Royalty - Level 7',
+    destination: 'Safe Wallet',
+    timestamp: '2024-10-15 00:01:05',
+    status: 'completed',
+    fee: 0,
+    txHash: '0xa0d1e2f3g4h5i6j7k8l9m0n1o2p3q4r5s6t7u8v9w0x1y2z3',
+    royaltyDetails: {
+      level: 7,
+      monthlyPayout: 8000,
+    },
+  },
+  {
+    id: 'tx006',
+    type: TRANSACTION_TYPES.SAME_SLAB_OVERRIDE,
+    amount_usd: 450,
+    amount_rama: 18.37,
+    source: 'Override from 0x2345...6789',
+    destination: 'Safe Wallet',
+    timestamp: '2024-10-14 18:22:45',
+    status: 'completed',
+    fee: 0,
+    txHash: '0xb1e2f3g4h5i6j7k8l9m0n1o2p3q4r5s6t7u8v9w0x1y2z3a4',
+    overrideDetails: {
+      wave: 'First Wave',
+      percentage: 10,
+      sourceMember: '0x2345...6789',
+    },
+  },
+  {
+    id: 'tx007',
+    type: TRANSACTION_TYPES.ONE_TIME_REWARD,
+    amount_usd: 10000,
+    amount_rama: 408.16,
+    source: 'Milestone Achievement #3',
+    destination: 'Safe Wallet',
+    timestamp: '2024-10-13 12:45:30',
+    status: 'completed',
+    fee: 0,
+    txHash: '0xc2f3g4h5i6j7k8l9m0n1o2p3q4r5s6t7u8v9w0x1y2z3a4b5',
+    rewardDetails: {
+      milestone: 3,
+      rewardName: 'Shell Harvest',
+    },
+  },
+  {
+    id: 'tx008',
+    type: TRANSACTION_TYPES.PORTFOLIO_CREATED,
+    amount_usd: 5000,
+    amount_rama: 204.08,
+    source: 'External Wallet',
+    destination: 'Portfolio #1',
+    timestamp: '2024-10-12 10:15:00',
+    status: 'completed',
+    fee: 5,
+    feeAmount: 10.20,
+    txHash: '0xd3g4h5i6j7k8l9m0n1o2p3q4r5s6t7u8v9w0x1y2z3a4b5c6',
+    portfolioDetails: {
+      isBooster: false,
+      commission: 5,
+      walletType: 'External Wallet',
+      upline: '0xabcd...ef01',
+      portfolioId: 'PF-2024-001',
+      growthRate: '0.5% Daily',
+    },
+  },
+  {
+    id: 'tx009',
+    type: TRANSACTION_TYPES.TRANSFER_TO_SAFE,
+    amount_usd: 3200,
+    amount_rama: 130.61,
+    source: 'Portfolio Growth Claim',
+    destination: 'Safe Wallet',
+    timestamp: '2024-10-11 15:30:22',
+    status: 'completed',
+    fee: 0,
+    txHash: '0xe4h5i6j7k8l9m0n1o2p3q4r5s6t7u8v9w0x1y2z3a4b5c6d7',
+  },
+  {
+    id: 'tx010',
+    type: TRANSACTION_TYPES.CLAIM_TO_SAFE,
+    amount_usd: 4500,
+    amount_rama: 183.67,
+    source: 'Slab Income',
+    destination: 'Safe Wallet',
+    timestamp: '2024-10-10 08:45:15',
+    status: 'completed',
+    fee: 0,
+    txHash: '0xf5i6j7k8l9m0n1o2p3q4r5s6t7u8v9w0x1y2z3a4b5c6d7e8',
+  },
+  {
+    id: 'tx011',
+    type: TRANSACTION_TYPES.SLAB_INCOME,
+    amount_usd: 875,
+    amount_rama: 35.71,
+    source: 'Team Member: 0x3456...7890',
+    destination: 'Safe Wallet',
+    timestamp: '2024-10-09 14:20:40',
+    status: 'completed',
+    fee: 0,
+    txHash: '0x06j7k8l9m0n1o2p3q4r5s6t7u8v9w0x1y2z3a4b5c6d7e8f9',
+    incomeDetails: {
+      slabLevel: 3,
+      percentage: 12,
+      teamMember: '0x3456...7890',
+    },
+  },
+  {
+    id: 'tx012',
+    type: TRANSACTION_TYPES.PORTFOLIO_GROWTH,
+    amount_usd: 1950,
+    amount_rama: 79.59,
+    source: 'Daily Growth Accrual',
+    destination: 'Safe Wallet',
+    timestamp: '2024-10-08 10:12:35',
+    status: 'completed',
+    fee: 0,
+    txHash: '0x17k8l9m0n1o2p3q4r5s6t7u8v9w0x1y2z3a4b5c6d7e8f9g0',
+  },
+];
 
 const getTransactionIcon = (type) => {
   const iconMap = {
@@ -55,65 +298,246 @@ const getTransactionColor = (type) => {
   return colorMap[type] || 'cyan-400';
 };
 
+const formatTimestamp = (timestamp) => {
+  if (!timestamp) return '—';
+  const date = new Date(timestamp * 1000);
+  if (Number.isNaN(date.getTime())) return '—';
+  const iso = date.toISOString();
+  return `${iso.slice(0, 10)} ${iso.slice(11, 19)}`;
+};
+
+const transformLedgerEntry = (entry) => {
+  const type = entry.isCredit
+    ? CREDIT_KIND_TO_TYPE[entry.kind] || TRANSACTION_TYPES.TRANSFER_TO_SAFE
+    : DEBIT_KIND_TO_TYPE[entry.kind] || TRANSACTION_TYPES.TRANSFER_TO_SAFE;
+
+  const amountUsd = normalizeUsdDisplay(entry.usd);
+  const amountRama = entry.rama;
+  const relatedShort = shortenAddress(entry.related);
+
+  const source = entry.isCredit
+    ? relatedShort
+      ? `From ${relatedShort}`
+      : 'Protocol Credit'
+    : 'Safe Wallet';
+
+  const destination = entry.isCredit
+    ? 'Safe Wallet'
+    : entry.kind === SAFEWALLET_KINDS.WITHDRAW
+    ? relatedShort
+      ? `To ${relatedShort}`
+      : 'External Wallet'
+    : entry.kind === SAFEWALLET_KINDS.PORTFOLIO_CREATE || entry.kind === SAFEWALLET_KINDS.PORTFOLIO_TOPUP
+    ? entry.pid && entry.pid > 0
+      ? `Portfolio #${entry.pid}`
+      : 'Portfolio'
+    : 'Safe Wallet';
+
+  const portfolioDetails =
+    type === TRANSACTION_TYPES.PORTFOLIO_CREATED
+      ? {
+          walletType:
+            destination.toLowerCase().includes('external')
+              ? 'External Wallet'
+              : 'Safe Wallet',
+          portfolioId: entry.pid ? `PF-${entry.pid}` : undefined,
+        }
+      : undefined;
+
+  return {
+    id: entry.id,
+    type,
+    amount_usd: amountUsd,
+    amount_rama: amountRama,
+    source,
+    destination,
+    timestamp: formatTimestamp(entry.timestamp),
+    rawTimestamp: entry.timestamp,
+    status: 'completed',
+    fee: 0,
+    txHash: entry.memoReadable ?? entry.memo ?? entry.id,
+    feeAmount: 0,
+    netAmount: amountRama,
+    related: entry.related,
+    pid: entry.pid,
+    isCredit: entry.isCredit,
+    memo: entry.memoReadable,
+    portfolioDetails,
+  };
+};
+
 export default function TransactionHistory() {
   const [selectedType, setSelectedType] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedTx, setExpandedTx] = useState(null);
   const [transactions, setTransactions] = useState([]);
-  const [recentCount, setRecentCount] = useState(0);
-  const [incomeTotals, setIncomeTotals] = useState({ growth: 0, slab: 0, royalty: 0, overrideB: 0, rewards: 0 });
+  const [summary, setSummary] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const getTransactionHistory = useStore((s) => s.getTransactionHistory);
+  const userAddressFromStore = useStore((s) => s.userAddress);
+  const userAddress =
+    userAddressFromStore || localStorage.getItem('userAddress') || null;
 
   useEffect(() => {
-    const user = localStorage.getItem('userAddress');
-    if (!user) return;
-    const web3 = new Web3(RPC_URL);
-    const view = new web3.eth.Contract(OceanViewV2ABI, OCEAN_VIEW_V2_ADDRESS);
-    const query = new web3.eth.Contract(OceanQueryUpgradeableABI, OCEAN_QUERY_ADDRESS);
-
-    (async () => {
-      try {
-        const [growth, slab, royalty, overrideB, rewards] = await query.methods.getIncomeStreamTotals(user).call();
-        setIncomeTotals({
-          growth: Number(growth) / 1e8,
-          slab: Number(slab) / 1e8,
-          royalty: Number(royalty) / 1e8,
-          overrideB: Number(overrideB) / 1e8,
-          rewards: Number(rewards) / 1e8,
-        });
-
-        const entries = await view.methods.getRecentTransactions(user, 50).call();
-        setRecentCount(entries?.length || 0);
-        // NOTE: entries are opaque bytes; decoder method not present yet
-      } catch (e) {
-        console.error('TransactionHistory load error:', e);
+    let cancelled = false;
+    const load = async () => {
+      if (!userAddress || !getTransactionHistory) {
+        setTransactions([]);
+        setSummary(null);
+        return;
       }
-    })();
-  }, []);
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await getTransactionHistory(userAddress, {
+          offset: 0,
+          limit: 200,
+        });
+        if (cancelled) return;
+        const mapped = (data?.entries ?? [])
+          .map(transformLedgerEntry)
+          .sort((a, b) => (b.rawTimestamp ?? 0) - (a.rawTimestamp ?? 0));
+        setTransactions(mapped);
+        setSummary(data ?? null);
+      } catch (err) {
+        if (cancelled) return;
+        console.error(err);
+        setError(err?.message || 'Unable to load transaction history.');
+        setTransactions([]);
+        setSummary(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
 
-  const filteredTransactions = transactions.filter(tx => {
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [userAddress, getTransactionHistory]);
+
+  const fallbackTransactions = useMemo(
+    () =>
+      mockTransactions.map((tx) => {
+        const parsedDate = tx.timestamp
+          ? new Date(tx.timestamp.replace(' ', 'T'))
+          : null;
+        const rawTimestamp = parsedDate && !Number.isNaN(parsedDate.getTime())
+          ? Math.floor(parsedDate.getTime() / 1000)
+          : null;
+        return {
+          ...tx,
+          amount_usd: normalizeUsdDisplay(tx.amount_usd ?? 0),
+          amount_rama: tx.amount_rama ?? 0,
+          rawTimestamp,
+          isCredit:
+            tx.isCredit !== undefined
+              ? tx.isCredit
+              : tx.type !== TRANSACTION_TYPES.PORTFOLIO_CREATED &&
+                tx.type !== TRANSACTION_TYPES.CLAIM_TO_WALLET,
+        };
+      }),
+    []
+  );
+
+  const baseTransactions = transactions.length
+    ? transactions
+    : fallbackTransactions;
+
+  const totalsByKind = summary?.totalsByKind ?? null;
+
+  const incomeStreamTotals = useMemo(() => {
+    if (totalsByKind) {
+      const portfolioGrowthRaw =
+        (totalsByKind.roi?.usd ?? 0) + (totalsByKind.growth?.usd ?? 0);
+      return {
+        portfolioGrowth: normalizeUsdDisplay(portfolioGrowthRaw),
+        slabIncome: normalizeUsdDisplay(totalsByKind.slab?.usd ?? 0),
+        royaltyIncome: normalizeUsdDisplay(totalsByKind.royalty?.usd ?? 0),
+        sameSlabOverride: 0,
+        oneTimeReward: normalizeUsdDisplay(totalsByKind.reward?.usd ?? 0),
+        spotIncome: normalizeUsdDisplay(totalsByKind.direct?.usd ?? 0),
+      };
+    }
+
+    return {
+      portfolioGrowth: normalizeUsdDisplay(
+        baseTransactions
+          .filter((tx) => tx.type === TRANSACTION_TYPES.PORTFOLIO_GROWTH)
+          .reduce((sum, tx) => sum + tx.amount_usd, 0)
+      ),
+      slabIncome: normalizeUsdDisplay(
+        baseTransactions
+          .filter((tx) => tx.type === TRANSACTION_TYPES.SLAB_INCOME)
+          .reduce((sum, tx) => sum + tx.amount_usd, 0)
+      ),
+      royaltyIncome: normalizeUsdDisplay(
+        baseTransactions
+          .filter((tx) => tx.type === TRANSACTION_TYPES.ROYALTY_INCOME)
+          .reduce((sum, tx) => sum + tx.amount_usd, 0)
+      ),
+      sameSlabOverride: normalizeUsdDisplay(
+        baseTransactions
+          .filter((tx) => tx.type === TRANSACTION_TYPES.SAME_SLAB_OVERRIDE)
+          .reduce((sum, tx) => sum + tx.amount_usd, 0)
+      ),
+      oneTimeReward: normalizeUsdDisplay(
+        baseTransactions
+          .filter((tx) => tx.type === TRANSACTION_TYPES.ONE_TIME_REWARD)
+          .reduce((sum, tx) => sum + tx.amount_usd, 0)
+      ),
+      spotIncome: normalizeUsdDisplay(
+        baseTransactions
+          .filter((tx) => tx.type === TRANSACTION_TYPES.SPOT_INCOME)
+          .reduce((sum, tx) => sum + tx.amount_usd, 0)
+      ),
+    };
+  }, [totalsByKind, baseTransactions]);
+
+  const totalEarnings = useMemo(() => {
+    if (totalsByKind) {
+      const sum =
+        (totalsByKind.roi?.usd ?? 0) +
+        (totalsByKind.growth?.usd ?? 0) +
+        (totalsByKind.slab?.usd ?? 0) +
+        (totalsByKind.royalty?.usd ?? 0) +
+        (totalsByKind.reward?.usd ?? 0) +
+        (totalsByKind.direct?.usd ?? 0);
+      return normalizeUsdDisplay(sum);
+    }
+    return normalizeUsdDisplay(
+      baseTransactions
+        .filter((tx) => tx.isCredit !== false)
+        .reduce((sum, tx) => sum + tx.amount_usd, 0)
+    );
+  }, [totalsByKind, baseTransactions]);
+
+  const totalTransactions = summary?.totalCount ?? baseTransactions.length;
+  const completedTransactions = baseTransactions.length;
+
+  const portfolioCreations = baseTransactions.filter(
+    (tx) => tx.type === TRANSACTION_TYPES.PORTFOLIO_CREATED
+  );
+  const safeWalletCreations = portfolioCreations.filter(
+    (tx) => tx.destination?.toLowerCase().includes('portfolio') || tx.destination === 'Safe Wallet'
+  );
+  const externalWalletCreations = portfolioCreations.filter((tx) =>
+    tx.destination?.toLowerCase().includes('external')
+  );
+
+  const latestActivity = baseTransactions[0] ?? null;
+
+  const filteredTransactions = baseTransactions.filter((tx) => {
     const matchesType = selectedType === 'all' || tx.type === selectedType;
+    const query = searchQuery.toLowerCase();
     const matchesSearch =
-      tx.txHash?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      tx.source.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      tx.destination.toLowerCase().includes(searchQuery.toLowerCase());
+      (tx.txHash ?? '').toLowerCase().includes(query) ||
+      (tx.source ?? '').toLowerCase().includes(query) ||
+      (tx.destination ?? '').toLowerCase().includes(query);
     return matchesType && matchesSearch;
   });
-
-  const totalEarnings = incomeTotals.growth + incomeTotals.slab + incomeTotals.royalty + incomeTotals.overrideB + incomeTotals.rewards;
-  const totalTransactions = recentCount;
-  const completedTransactions = recentCount;
-
-  const incomeStreamTotals = {
-    portfolioGrowth: incomeTotals.growth,
-    slabIncome: incomeTotals.slab,
-    royaltyIncome: incomeTotals.royalty,
-    sameSlabOverride: incomeTotals.overrideB,
-    oneTimeReward: incomeTotals.rewards,
-  };
-
-  const portfolioCreations = transactions.filter(tx => tx.type === TRANSACTION_TYPES.PORTFOLIO_CREATED);
-  const safeWalletCreations = portfolioCreations.filter(tx => tx.portfolioDetails?.walletType === 'Safe Wallet');
-  const externalWalletCreations = portfolioCreations.filter(tx => tx.portfolioDetails?.walletType === 'External Wallet');
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -146,7 +570,7 @@ export default function TransactionHistory() {
             </div>
             <p className="text-xs text-neon-green uppercase tracking-wide">Total Volume</p>
           </div>
-          <p className="text-2xl font-bold text-neon-green">${totalEarnings.toLocaleString()}</p>
+          <p className="text-2xl font-bold text-neon-green">{formatUSD(totalEarnings)}</p>
           <p className="text-xs text-cyan-300/90 mt-1">All time earnings</p>
         </div>
 
@@ -170,8 +594,12 @@ export default function TransactionHistory() {
             </div>
             <p className="text-xs text-cyan-400 uppercase tracking-wide">Latest Activity</p>
           </div>
-          <p className="text-sm font-bold text-cyan-300">{transactions[0]?.timestamp?.split(' ')[0] || '-'}</p>
-          <p className="text-xs text-cyan-300/90 mt-1">{transactions[0]?.type || '-'}</p>
+          <p className="text-sm font-bold text-cyan-300">
+            {latestActivity ? latestActivity.timestamp.split(' ')[0] : '—'}
+          </p>
+          <p className="text-xs text-cyan-300/90 mt-1">
+            {latestActivity ? latestActivity.type : 'No activity'}
+          </p>
         </div>
       </div>
 
@@ -181,23 +609,23 @@ export default function TransactionHistory() {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           <div className="p-3 cyber-glass border border-neon-green/30 rounded-lg">
             <p className="text-xs text-neon-green/90 mb-1">Portfolio Growth</p>
-            <p className="text-lg font-bold text-neon-green">${incomeStreamTotals.portfolioGrowth.toLocaleString()}</p>
+            <p className="text-lg font-bold text-neon-green">{formatUSD(incomeStreamTotals.portfolioGrowth ?? 0)}</p>
           </div>
           <div className="p-3 cyber-glass border border-neon-purple/30 rounded-lg">
             <p className="text-xs text-neon-purple/90 mb-1">Slab Income</p>
-            <p className="text-lg font-bold text-neon-purple">${incomeStreamTotals.slabIncome.toLocaleString()}</p>
+            <p className="text-lg font-bold text-neon-purple">{formatUSD(incomeStreamTotals.slabIncome ?? 0)}</p>
           </div>
           <div className="p-3 cyber-glass border border-neon-orange/30 rounded-lg">
             <p className="text-xs text-neon-orange/90 mb-1">Royalty Income</p>
-            <p className="text-lg font-bold text-neon-orange">${incomeStreamTotals.royaltyIncome.toLocaleString()}</p>
+            <p className="text-lg font-bold text-neon-orange">{formatUSD(incomeStreamTotals.royaltyIncome ?? 0)}</p>
           </div>
           <div className="p-3 cyber-glass border border-cyan-400/30 rounded-lg">
             <p className="text-xs text-cyan-400/90 mb-1">Same-Slab Override</p>
-            <p className="text-lg font-bold text-cyan-400">${incomeStreamTotals.sameSlabOverride.toLocaleString()}</p>
+            <p className="text-lg font-bold text-cyan-400">{formatUSD(incomeStreamTotals.sameSlabOverride ?? 0)}</p>
           </div>
           <div className="p-3 cyber-glass border border-blue-400/30 rounded-lg">
             <p className="text-xs text-blue-400/90 mb-1">One-Time Rewards</p>
-            <p className="text-lg font-bold text-blue-400">${incomeStreamTotals.oneTimeReward.toLocaleString()}</p>
+            <p className="text-lg font-bold text-blue-400">{formatUSD(incomeStreamTotals.oneTimeReward ?? 0)}</p>
           </div>
         </div>
       </div>
@@ -268,7 +696,7 @@ export default function TransactionHistory() {
                   <tr key={tx.id} className="border-b border-cyan-500/10 hover:bg-cyan-500/5 transition-colors">
                     <td className="py-3 px-4 text-sm text-cyan-300">{index + 1}</td>
                     <td className="py-3 px-4 text-sm text-cyan-300 font-mono">{tx.portfolioDetails?.portfolioId || tx.destination}</td>
-                    <td className="py-3 px-4 text-sm text-neon-green font-semibold">${tx.amount_usd.toLocaleString()}</td>
+                    <td className="py-3 px-4 text-sm text-neon-green font-semibold">{formatUSD(tx.amount_usd ?? 0)}</td>
                     <td className="py-3 px-4 text-sm text-cyan-300">{tx.amount_rama.toFixed(2)}</td>
                     <td className="py-3 px-4 text-sm text-cyan-300">{tx.timestamp}</td>
                     <td className="py-3 px-4 text-sm text-neon-orange font-semibold">{tx.portfolioDetails?.growthRate || '0.5% Daily'}</td>
@@ -321,7 +749,7 @@ export default function TransactionHistory() {
                             <span className="text-sm text-cyan-300 font-medium">{tx.type}</span>
                           </div>
                         </td>
-                        <td className="py-3 px-4 text-sm text-neon-green font-semibold">${tx.amount_usd.toLocaleString()}</td>
+                        <td className="py-3 px-4 text-sm text-neon-green font-semibold">{formatUSD(tx.amount_usd ?? 0)}</td>
                         <td className="py-3 px-4 text-sm text-cyan-300">{tx.amount_rama.toFixed(2)}</td>
                         <td className="py-3 px-4 text-sm text-cyan-300">{tx.timestamp}</td>
                         <td className="py-3 px-4 text-sm text-cyan-300/90 font-mono text-xs">{tx.source}</td>
@@ -532,5 +960,3 @@ export default function TransactionHistory() {
     </div>
   );
 }
-
-

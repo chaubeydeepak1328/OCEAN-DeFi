@@ -9,6 +9,10 @@ import SlabManagerABI from './Contract_ABI/SlabManager.json'
 import { dayShortFromUnix } from "../src/utils/helper";
 import SafeWalletABI from './Contract_ABI/SafeWallet.json'
 import OceanViewV2ABI from './Contract_ABI/OceanView2.json'
+import OceanViewABI from './Contract_ABI/OceanView.json'
+import IncomeDistributorABI from './Contract_ABI/IncomeDistributor.json'
+import RoyaltyManagerABI from './Contract_ABI/RoyaltyManager.json'
+import RewardVaultABI from './Contract_ABI/RewardVault.json'
 
 const Contract = {
   UserRegistry: "0x71Ce2E2Af312e856b17d901aCDbE4ea39831C961",
@@ -34,6 +38,17 @@ const INFURA_URL = "https://blockchain.ramestta.com";
 const web3 = new Web3(INFURA_URL);
 
 
+const fromMicroUSD = (value) => toNumber(value) / USD_MICRO;
+const fromWadToUsd = (value) => toNumber(value) / 1e18;
+
+const toNumber = (value) => {
+  if (value === null || value === undefined) return 0;
+  if (typeof value === "number") return value;
+  if (typeof value === "bigint") return Number(value);
+  return Number(value);
+};
+
+
 const readLocalJSON = (key) => {
   try {
     const raw = localStorage.getItem(key);
@@ -43,6 +58,24 @@ const readLocalJSON = (key) => {
     return null;
   }
 };
+
+
+const fromWeiToRama = (value) => toNumber(value) / RAMA_DECIMALS;
+
+const USD_MICRO = 1e6;
+const RAMA_DECIMALS = 1e18;
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+const hasAddress = (addr) =>
+  typeof addr === "string" &&
+  addr.startsWith("0x") &&
+  addr.length === 42 &&
+  addr.toLowerCase() !== ZERO_ADDRESS.toLowerCase();
+
+
+
+const makeContract = (abi, address) =>
+  hasAddress(address) ? new web3.eth.Contract(abi, address) : null;
+
 
 
 
@@ -356,6 +389,195 @@ export const useStore = create((set, get) => ({
   // =====================================================================
   // Slab Income 
   // =====================================================================
+
+  getSlabIncomeOverview: async (userAddress) => {
+    try {
+      if (!userAddress) throw new Error("Missing user address");
+
+      const oceanViewV2 = makeContract(
+        OceanViewV2ABI,
+        Contract["OceanViewV2"]
+      );
+      const oceanQuery = makeContract(
+        OceanQueryUpgradeableABI,
+        Contract["OceanQueryUpgradeable"]
+      );
+      const slabManager = makeContract(SlabManagerABI, Contract["SlabManager"]);
+      const portfolioManager = makeContract(
+        PortFolioManagerABI,
+        Contract["PortFolioManager"]
+      );
+
+      const todayDayId = Math.floor(Date.now() / 86400000);
+      let summary = null;
+      if (oceanViewV2) {
+        try {
+          const [summaryRaw] = await oceanViewV2.methods
+            .getDashboardData(userAddress, todayDayId)
+            .call();
+          summary = summaryRaw ?? null;
+        } catch (err) {
+          console.warn("OceanViewV2.getDashboardData (slab) failed:", err);
+        }
+      }
+
+      const [
+        slabIncomeRaw,
+        slabIncomeAvailableRaw,
+        sameSlabOverrideRaw,
+        sameSlabEarningsRaw,
+        sameSlabPartnersRaw,
+        slabClaimStatusRaw,
+        slabIndexRaw,
+        qualifiedBusinessUsdRaw,
+        userStatusRaw,
+      ] = await Promise.all([
+        oceanQuery.methods.getSlabIncome(userAddress).call(),
+        oceanQuery.methods.getSlabIncomeAvailable(userAddress).call(),
+        oceanQuery.methods.getSameSlabOverrideIncome(userAddress).call(),
+        oceanQuery.methods.getSameSlabOverrideEarnings(userAddress).call(),
+        oceanQuery.methods.getSameSlabPartners(userAddress).call(),
+        oceanQuery.methods.getSlabClaimStatus(userAddress).call(),
+        slabManager
+          ? slabManager.methods.getSlabIndex(userAddress).call()
+          : 0,
+        slabManager
+          ? slabManager.methods.getQualifiedBusinessUSD(userAddress).call()
+          : 0,
+        oceanQuery.methods.getUserStatus(userAddress).call(),
+      ]);
+
+      let ramaPerUsdWei = null;
+      if (portfolioManager) {
+        try {
+          const ratioStr = await portfolioManager.methods
+            .getPackageValueInRAMA("1000000")
+            .call();
+          ramaPerUsdWei = BigInt(ratioStr);
+        } catch (err) {
+          console.warn("getPackageValueInRAMA failed:", err);
+        }
+      }
+
+      const USD_MICRO_BI = BigInt(USD_MICRO);
+      const convertUsdMicroToRamaWei = (value) => {
+        if (!ramaPerUsdWei) return "0";
+        try {
+          const usdMicroBig = BigInt(value ?? "0");
+          const wei = (usdMicroBig * ramaPerUsdWei) / USD_MICRO_BI;
+          return wei.toString();
+        } catch {
+          return "0";
+        }
+      };
+
+      const slabIncomeUsd = fromMicroUSD(slabIncomeRaw);
+      const slabIncomeAvailableUsd = fromMicroUSD(slabIncomeAvailableRaw);
+      const slabIncomeRama = fromWeiToRama(
+        convertUsdMicroToRamaWei(slabIncomeRaw)
+      );
+      const slabIncomeAvailableRama = fromWeiToRama(
+        convertUsdMicroToRamaWei(slabIncomeAvailableRaw)
+      );
+
+      const overrideIncomeUsd = fromMicroUSD(sameSlabOverrideRaw);
+      const overrideIncomeRama = fromWeiToRama(
+        convertUsdMicroToRamaWei(sameSlabOverrideRaw)
+      );
+
+      const overrideWavesUsd = [
+        fromMicroUSD(sameSlabEarningsRaw?.[0]),
+        fromMicroUSD(sameSlabEarningsRaw?.[1]),
+        fromMicroUSD(sameSlabEarningsRaw?.[2]),
+      ];
+      const overrideWavesRama = [
+        fromWeiToRama(
+          convertUsdMicroToRamaWei(sameSlabEarningsRaw?.[0])
+        ),
+        fromWeiToRama(
+          convertUsdMicroToRamaWei(sameSlabEarningsRaw?.[1])
+        ),
+        fromWeiToRama(
+          convertUsdMicroToRamaWei(sameSlabEarningsRaw?.[2])
+        ),
+      ];
+
+      const slabLevelFromSummary = summary
+        ? toNumber(summary?.slabLevel)
+        : null;
+      const slabLevel = Number.isFinite(slabLevelFromSummary)
+        ? slabLevelFromSummary
+        : toNumber(slabIndexRaw);
+
+      const qualifiedVolumeUsd = summary
+        ? fromMicroUSD(summary?.qualifiedVolumeUsdMicro)
+        : fromMicroUSD(qualifiedBusinessUsdRaw);
+
+      const directs = summary
+        ? toNumber(summary?.directRefs)
+        : toNumber(userStatusRaw?.directs);
+
+      const canClaim =
+        typeof slabClaimStatusRaw?.canClaim === "boolean"
+          ? slabClaimStatusRaw.canClaim
+          : Boolean(slabClaimStatusRaw?.[0]);
+      const lastClaimEpoch = toNumber(
+        slabClaimStatusRaw?.lastClaimAtEpoch ?? slabClaimStatusRaw?.[1]
+      );
+      const currentEpoch = toNumber(
+        slabClaimStatusRaw?.currentEpoch ?? slabClaimStatusRaw?.[2]
+      );
+
+      const partners =
+        sameSlabPartnersRaw && sameSlabPartnersRaw.firstWave !== undefined
+          ? sameSlabPartnersRaw
+          : {
+            firstWave: sameSlabPartnersRaw?.[0] ?? [],
+            secondWave: sameSlabPartnersRaw?.[1] ?? [],
+            thirdWave: sameSlabPartnersRaw?.[2] ?? [],
+          };
+
+      return {
+        slabLevel,
+        qualifiedVolumeUsd,
+        directs,
+        canClaim,
+        currentEpoch,
+        lastClaimEpoch,
+        slabIncomeUsd,
+        slabIncomeAvailableUsd,
+        slabIncomeRama,
+        slabIncomeAvailableRama,
+        overrideIncomeUsd,
+        overrideIncomeRama,
+        OverrideEarnings: {
+          l1Usd: overrideWavesUsd[0] ?? 0,
+          l2Usd: overrideWavesUsd[1] ?? 0,
+          l3Usd: overrideWavesUsd[2] ?? 0,
+          l1: overrideWavesRama[0] ?? 0,
+          l2: overrideWavesRama[1] ?? 0,
+          l3: overrideWavesRama[2] ?? 0,
+        },
+        totalOverrideUsd: overrideWavesUsd.reduce(
+          (acc, val) => acc + (val || 0),
+          0
+        ),
+        totalOverrideRama: overrideWavesRama.reduce(
+          (acc, val) => acc + (val || 0),
+          0
+        ),
+        sameSlabPartners: {
+          firstWave: partners.firstWave ?? [],
+          secondWave: partners.secondWave ?? [],
+          thirdWave: partners.thirdWave ?? [],
+        },
+        summary,
+      };
+    } catch (error) {
+      console.error("getSlabIncomeOverview error:", error);
+      throw error;
+    }
+  },
 
   getSlabLevel: async (userAddress) => {
     try {
@@ -962,8 +1184,805 @@ export const useStore = create((set, get) => ({
   },
 
   // ==========================================================================
-  //PortFolioOverView
+  //PortFolio   OverView
   // ==========================================================================
+
+  getPortfolioIds: async (userAddress) => {
+    try {
+      if (!userAddress) return [];
+
+      const pm = new web3.eth.Contract(
+        PortFolioManagerABI,
+        Contract["PortFolioManager"]
+      );
+
+      const rawIds = await pm.methods.portfoliosOf(userAddress).call();
+      return rawIds.map((id) => Number(id));
+    } catch (error) {
+      console.error("getPortfolioIds error:", error);
+      throw error;
+    }
+  },
+
+  // =====================================================================
+  // Spot / Direct Income
+  // =====================================================================
+
+  getSpotIncomeSummary: async (userAddress, options = {}) => {
+    const { limit = 25, portfolioLimit = 4 } = options;
+    try {
+      if (!userAddress) throw new Error("Missing user address");
+
+      const distributor = makeContract(
+        IncomeDistributorABI,
+        Contract["IncomeDistributor"]
+      );
+      if (!distributor) throw new Error("IncomeDistributor contract unavailable");
+
+      const oceanQuery = makeContract(
+        OceanQueryUpgradeableABI,
+        Contract["OceanQueryUpgradeable"]
+      );
+      const portfolioManager = makeContract(
+        PortFolioManagerABI,
+        Contract["PortFolioManager"]
+      );
+
+      const [
+        summaryRaw,
+        countRaw,
+        totalDirectUsdRaw,
+        totalDirectRamaRaw,
+        sliceRaw,
+        totalEarningsRaw,
+      ] = await Promise.all([
+        distributor.methods.getDirectIncomeSummary(userAddress).call(),
+        distributor.methods.getDirectIncomeCount(userAddress).call(),
+        distributor.methods.totalDirectUsd(userAddress).call(),
+        distributor.methods.totalDirectRama(userAddress).call(),
+        distributor.methods
+          .getDirectIncomeSlice(userAddress, 0, limit)
+          .call(),
+        oceanQuery
+          ? oceanQuery.methods.getTotalEarnings(userAddress).call()
+          : [0, 0],
+      ]);
+
+      const entries = toNumber(summaryRaw?.entries);
+      const lifetimeUsdMicro = toNumber(summaryRaw?.lifetimeUsd);
+      const lifetimeUsd = lifetimeUsdMicro / USD_MICRO;
+      const lifetimeRamaWei = toNumber(summaryRaw?.lifetimeRama);
+      const lifetimeRama = fromWeiToRama(summaryRaw?.lifetimeRama);
+      const claimableRamaWei = toNumber(summaryRaw?.claimableRama);
+      const claimableRama = fromWeiToRama(summaryRaw?.claimableRama);
+
+      let claimableUsdMicro = 0;
+      if (
+        portfolioManager &&
+        summaryRaw?.claimableRama &&
+        summaryRaw.claimableRama !== "0"
+      ) {
+        try {
+          const usdMicro = await portfolioManager.methods
+            .getPackageValueInUSD(summaryRaw.claimableRama)
+            .call();
+          claimableUsdMicro = toNumber(usdMicro);
+        } catch (conversionErr) {
+          console.warn("Claimable USD conversion failed:", conversionErr);
+        }
+      }
+
+      const transactions =
+        (sliceRaw ?? []).map((item) => ({
+          receiver: item.receiver,
+          from: item.receivedFrom,
+          portfolioId: toNumber(item.portfolioId),
+          amountUsdMicro: toNumber(item.amountUsd),
+          amountUsd:
+            toNumber(item.amountUsd) / USD_MICRO,
+          amountRamaWei: toNumber(item.amountRama),
+          amountRama: toNumber(item.amountRama) / RAMA_DECIMALS,
+          timestamp: toNumber(item.timestamp),
+          dayId: toNumber(item.dayId),
+        })) ?? [];
+
+      const nowTs = Math.floor(Date.now() / 1000);
+      const cutoff = nowTs - 86400;
+      let last24hUsdMicro = 0;
+      let last24hRamaWei = 0;
+      const portfolioSet = new Set();
+      transactions.forEach((tx) => {
+        if (tx.portfolioId != null && !Number.isNaN(tx.portfolioId)) {
+          portfolioSet.add(tx.portfolioId);
+        }
+        if (tx.timestamp >= cutoff) {
+          last24hUsdMicro += tx.amountUsdMicro ?? 0;
+          last24hRamaWei += tx.amountRamaWei ?? 0;
+        }
+      });
+
+      const totalEntries = toNumber(countRaw);
+      const averageSpotUsdMicro =
+        entries > 0 ? lifetimeUsdMicro / entries : 0;
+      const averageSpotUsd = averageSpotUsdMicro / USD_MICRO;
+      const totalDirectUsdMicro = toNumber(totalDirectUsdRaw);
+      const totalDirectUsd = totalDirectUsdMicro / USD_MICRO;
+      const totalDirectRamaWei = toNumber(totalDirectRamaRaw);
+      const totalDirectRama = totalDirectRamaWei / RAMA_DECIMALS;
+      const totalEarningsUsd = fromWadToUsd(totalEarningsRaw?.[0] ?? 0);
+      const totalEarningsRama = fromWeiToRama(totalEarningsRaw?.[1] ?? 0);
+
+      const uniquePortfolioIds = new Set(portfolioSet);
+      try {
+        const additionalIds = await get().getPortfolioIds(userAddress);
+        (additionalIds ?? []).forEach((pid) => {
+          const numPid = Number(pid);
+          if (Number.isFinite(numPid)) uniquePortfolioIds.add(numPid);
+        });
+      } catch (pidErr) {
+        console.warn("getPortfolioIds failed for spot income:", pidErr);
+      }
+
+      const portfolioIdsList = Array.from(uniquePortfolioIds).slice(
+        0,
+        portfolioLimit
+      );
+
+      const totalsByPortfolio = await Promise.all(
+        portfolioIdsList.map(async (pid) => {
+          try {
+            const totals = await distributor.methods
+              .getDirectIncomeTotalsByPortfolio(userAddress, pid)
+              .call();
+            return {
+              pid,
+              usdMicro: toNumber(totals?.usdSum ?? totals?.[0]),
+              usd:
+                toNumber(totals?.usdSum ?? totals?.[0]) / USD_MICRO,
+              ramaWei: toNumber(totals?.ramaSum ?? totals?.[1]),
+              rama:
+                toNumber(totals?.ramaSum ?? totals?.[1]) / RAMA_DECIMALS,
+              count: toNumber(totals?.count ?? totals?.[2]),
+            };
+          } catch (err) {
+            console.warn(
+              `getDirectIncomeTotalsByPortfolio(${pid}) failed`,
+              err
+            );
+            return null;
+          }
+        })
+      ).then((res) => res.filter(Boolean));
+
+      return {
+        overview: {
+          entries,
+          totalEntries,
+          lifetimeUsdMicro,
+          lifetimeUsd,
+          lifetimeRama,
+          lifetimeRamaWei,
+          totalDirectUsdMicro,
+          totalDirectUsd,
+          totalDirectRama,
+          totalDirectRamaWei,
+          claimableRama,
+          claimableRamaWei,
+          claimableUsdMicro,
+          claimableUsd: claimableUsdMicro / USD_MICRO,
+          last24hUsdMicro,
+          last24hUsd: last24hUsdMicro / USD_MICRO,
+          last24hRamaWei,
+          last24hRama: last24hRamaWei / RAMA_DECIMALS,
+          averageSpotUsd,
+          averageSpotUsdMicro,
+          totalEarningsUsd,
+          totalEarningsRama,
+          activeSpots: totalsByPortfolio.length
+            ? totalsByPortfolio.length
+            : totalEntries,
+        },
+        transactions,
+        totalsByPortfolio,
+        hasMore: totalEntries > transactions.length,
+      };
+    } catch (error) {
+      console.error("getSpotIncomeSummary error:", error);
+      throw error;
+    }
+  },
+
+  getSpotIncomeTransactions: async (
+    userAddress,
+    { offset = 0, limit = 20 } = {}
+  ) => {
+    try {
+      if (!userAddress) throw new Error("Missing user address");
+
+      const distributor = makeContract(
+        IncomeDistributorABI,
+        Contract["IncomeDistributor"]
+      );
+      if (!distributor) throw new Error("IncomeDistributor contract unavailable");
+
+      const sliceRaw = await distributor.methods
+        .getDirectIncomeSlice(userAddress, offset, limit)
+        .call();
+
+      return (sliceRaw ?? []).map((item) => ({
+        receiver: item.receiver,
+        from: item.receivedFrom,
+        portfolioId: toNumber(item.portfolioId),
+        amountUsdMicro: toNumber(item.amountUsd),
+        amountUsd: toNumber(item.amountUsd) / USD_MICRO,
+        amountRamaWei: toNumber(item.amountRama),
+        amountRama: toNumber(item.amountRama) / RAMA_DECIMALS,
+        timestamp: toNumber(item.timestamp),
+        dayId: toNumber(item.dayId),
+      }));
+    } catch (error) {
+      console.error("getSpotIncomeTransactions error:", error);
+      throw error;
+    }
+  },
+
+  getPortfolioSummaries: async (userAddress) => {
+    try {
+      if (!userAddress) return [];
+
+      const oceanViewV2 = makeContract(
+        OceanViewV2ABI,
+        Contract["OceanViewV2"]
+      );
+
+      if (oceanViewV2) {
+        try {
+          const [cardsRaw] = await oceanViewV2.methods
+            .getPortfolioCards(userAddress)
+            .call();
+
+          const pick = (record, key, index) =>
+            record?.[key] != null ? record[key] : record?.[index];
+
+          return (cardsRaw ?? []).map((entry) => {
+            const pid = Number(pick(entry, "pid", 0));
+            const principalUsdMicro =
+              pick(entry, "principalUsdMicro", 2) ??
+              pick(entry, "principalUSD", 2) ??
+              0;
+            const principalRamaWei =
+              pick(entry, "principalRamaWei", 1) ??
+              pick(entry, "principalRama", 1) ??
+              0;
+            const capRamaWei =
+              pick(entry, "capRamaWei", 3) ?? pick(entry, "capRama", 3) ?? 0;
+            const creditedRamaWei =
+              pick(entry, "creditedRamaWei", 5) ??
+              pick(entry, "creditedRama", 5) ??
+              0;
+            const capPct = Number(pick(entry, "capPct", 9) ?? 0);
+            const booster = Boolean(pick(entry, "booster", 11));
+            const tier = Number(pick(entry, "tier", 10) ?? 0);
+            const dailyRateWad = pick(entry, "dailyRateWad", 8);
+            const active = Boolean(pick(entry, "active", 12));
+            const createdAt = Number(pick(entry, "createdAt", 13) ?? 0);
+            const frozenUntil = Number(pick(entry, "frozenUntil", 14) ?? 0);
+            const capProgressBps = Number(
+              pick(entry, "capProgressBps", 7) ?? 0
+            );
+
+            return {
+              pid,
+              principalUsdRaw: principalUsdMicro,
+              principalUsd: fromMicroUSD(principalUsdMicro),
+              principalRama: fromWeiToRama(principalRamaWei),
+              principalRamaWei,
+              capRama: toNumber(capRamaWei),
+              creditedRama: toNumber(creditedRamaWei),
+              capPct,
+              booster,
+              tier,
+              dailyRateWad,
+              active,
+              createdAt,
+              frozenUntil,
+              capProgressBps,
+            };
+          });
+        } catch (err) {
+          console.warn(
+            "OceanViewV2.getPortfolioCards fallback to legacy:",
+            err?.message ?? err
+          );
+        }
+      }
+
+      const oceanView = new web3.eth.Contract(
+        OceanViewABI,
+        Contract["OceanViewUpgradeable"]
+      );
+      const oceanQuery = new web3.eth.Contract(
+        OceanQueryUpgradeableABI,
+        Contract["OceanQueryUpgradeable"]
+      );
+
+      const rawSummaries = await oceanView.methods
+        .getPortfolioSummaries(userAddress)
+        .call();
+
+      const pickValue = (entry, key, index) =>
+        entry?.[key] != null ? entry[key] : entry?.[index];
+
+      const items = [];
+      for (const entry of rawSummaries ?? []) {
+        const pid = Number(pickValue(entry, "pid", 0));
+        const principalUsdRaw = toNumber(pickValue(entry, "principalUSD", 2));
+        const principalRama = toNumber(pickValue(entry, "principalRama", 1));
+        const capRama = toNumber(pickValue(entry, "capRama", 3));
+        const creditedRama = toNumber(pickValue(entry, "creditedRama", 4));
+        const capPct = Number(pickValue(entry, "capPct", 5));
+        const booster = Boolean(pickValue(entry, "booster", 6));
+        const tier = Number(pickValue(entry, "tier", 7));
+        const dailyRateWad = pickValue(entry, "dailyRateWad", 8);
+        const active = Boolean(pickValue(entry, "active", 9));
+        const createdAt = Number(pickValue(entry, "createdAt", 10));
+        const frozenUntil = Number(pickValue(entry, "frozenUntil", 11));
+
+        let capProgressBps = null;
+        if (Number.isFinite(pid) && pid >= 0) {
+          try {
+            const progressRaw = await oceanQuery.methods
+              .getPortfolioCapProgress(pid)
+              .call();
+            capProgressBps = Number(progressRaw);
+          } catch {
+            capProgressBps = null;
+          }
+        }
+
+        items.push({
+          pid,
+          principalUsdRaw,
+          principalUsd: fromMicroUSD(principalUsdRaw),
+          principalRama,
+          capRama,
+          creditedRama,
+          capPct,
+          booster,
+          tier,
+          dailyRateWad,
+          active,
+          createdAt,
+          frozenUntil,
+          capProgressBps,
+        });
+      }
+
+      return items;
+    } catch (error) {
+      console.error("getPortfolioSummaries error:", error);
+      throw error;
+    }
+  },
+
+  getLifetimeCapProgress: async (userAddress) => {
+    try {
+      if (!userAddress) return null;
+
+      const oceanViewV2 = makeContract(
+        OceanViewV2ABI,
+        Contract["OceanViewV2"]
+      );
+
+      if (oceanViewV2) {
+        try {
+          const [, lifetimeCapRaw] = await oceanViewV2.methods
+            .getPortfolioCards(userAddress)
+            .call();
+          return Number(lifetimeCapRaw ?? 0);
+        } catch (err) {
+          console.warn(
+            "OceanViewV2.getPortfolioCards (lifetimeCap) fallback:",
+            err?.message ?? err
+          );
+        }
+      }
+
+      const oceanQuery = new web3.eth.Contract(
+        OceanQueryUpgradeableABI,
+        Contract["OceanQueryUpgradeable"]
+      );
+      const raw = await oceanQuery.methods
+        .getLifetimeCapProgress(userAddress)
+        .call();
+      return Number(raw);
+    } catch (error) {
+      console.error("getLifetimeCapProgress error:", error);
+      throw error;
+    }
+  },
+
+
+
+   // =====================================================================
+  // Royalty Program
+  // =====================================================================
+
+  getRoyaltyOverview: async (userAddress) => {
+    try {
+      if (!userAddress) throw new Error("Missing user address");
+
+      const oceanViewV2 = makeContract(
+        OceanViewV2ABI,
+        Contract["OceanViewV2"]
+      );
+      const oceanQuery = makeContract(
+        OceanQueryUpgradeableABI,
+        Contract["OceanQueryUpgradeable"]
+      );
+      const royaltyManager = makeContract(
+        RoyaltyManagerABI,
+        Contract["RoyaltyManager"]
+      );
+      const portfolioManager = makeContract(
+        PortFolioManagerABI,
+        Contract["PortFolioManager"]
+      );
+
+      const todayDayId = Math.floor(Date.now() / 86400000);
+      let summary = null;
+      let incomeSummary = null;
+
+      if (oceanViewV2) {
+        try {
+          const dashboardData = await oceanViewV2.methods
+            .getDashboardData(userAddress, todayDayId)
+            .call();
+          summary = dashboardData?.[0] ?? null;
+          incomeSummary = dashboardData?.[1] ?? null;
+        } catch (err) {
+          console.warn("OceanViewV2.getDashboardData (royalty) failed:", err);
+        }
+      }
+
+      const [
+        royaltyIncomeRaw,
+        nextClaimRaw,
+        renewalRaw,
+        currentLevelRaw,
+        canClaimRaw,
+      ] = await Promise.all([
+        oceanQuery.methods.getRoyaltyIncome(userAddress).call(),
+        oceanQuery.methods.getNextRoyaltyClaimDate(userAddress).call(),
+        oceanQuery.methods.getRoyaltyRenewalRequirement(userAddress).call(),
+        oceanQuery.methods.getCurrentRoyaltyLevel(userAddress).call(),
+        oceanQuery.methods.canClaimRoyalty(userAddress).call(),
+      ]);
+
+      let royaltyState = null;
+      if (royaltyManager) {
+        try {
+          royaltyState = await royaltyManager.methods
+            .royalty(userAddress)
+            .call();
+        } catch (err) {
+          console.warn("RoyaltyManager.royalty call failed:", err);
+        }
+      }
+
+      const royaltyUsdMicroRaw = incomeSummary?.royaltyUsdMicro ?? royaltyIncomeRaw;
+      const royaltyIncomeUsd = fromMicroUSD(royaltyUsdMicroRaw);
+
+      let royaltyIncomeRama = 0;
+      if (portfolioManager && royaltyUsdMicroRaw && royaltyUsdMicroRaw !== "0") {
+        try {
+          const ramaWei = await portfolioManager.methods
+            .getPackageValueInRAMA(royaltyUsdMicroRaw)
+            .call();
+          royaltyIncomeRama = fromWeiToRama(ramaWei);
+        } catch (err) {
+          console.warn("Royalty USD->RAMA conversion failed:", err);
+        }
+      }
+
+      const currentLevel = summary
+        ? toNumber(summary.royaltyLevel)
+        : toNumber(currentLevelRaw);
+      const canClaim = summary
+        ? Boolean(summary.royaltyCanClaim)
+        : Boolean(canClaimRaw);
+      const paused = summary
+        ? Boolean(summary.royaltyPaused)
+        : Boolean(renewalRaw?.paused);
+
+      const paidMonths = summary
+        ? toNumber(summary.royaltyPaidMonths)
+        : 0;
+
+      const lastPaidMonthEpoch = summary
+        ? toNumber(summary.royaltyLastMonthEpoch)
+        : toNumber(nextClaimRaw?.[0] ?? 0);
+      const nextMonthEpoch = summary
+        ? toNumber(summary.royaltyNextMonthEpoch)
+        : toNumber(nextClaimRaw?.[1] ?? 0);
+
+      const renewalSnapshotUsd = summary
+        ? fromMicroUSD(summary.royaltyRenewalSnapshotUsd)
+        : fromMicroUSD(renewalRaw?.lastT ?? 0);
+      const renewalRecentUsd = summary
+        ? fromMicroUSD(summary.royaltyRecentSnapshotUsd)
+        : fromMicroUSD(renewalRaw?.nowT ?? 0);
+      const renewalTargetUsd =
+        renewalSnapshotUsd > 0 ? renewalSnapshotUsd * 1.1 : 0;
+      const renewalRequiredUsd = Math.max(
+        0,
+        renewalTargetUsd - renewalRecentUsd
+      );
+
+      const qualifiedVolumeUsd = summary
+        ? fromMicroUSD(summary.qualifiedVolumeUsdMicro)
+        : 0;
+      const directs = summary ? toNumber(summary.directRefs) : 0;
+
+      const overrideUsdMicro = incomeSummary?.overrideUsdMicro ?? 0;
+      const overrideUsd = fromMicroUSD(overrideUsdMicro);
+      const pendingRoyaltyUsd = royaltyIncomeUsd;
+
+      let overrideIncomeRama = 0;
+      if (portfolioManager && overrideUsdMicro && overrideUsdMicro !== "0") {
+        try {
+          const ramaWei = await portfolioManager.methods
+            .getPackageValueInRAMA(overrideUsdMicro)
+            .call();
+          overrideIncomeRama = fromWeiToRama(ramaWei);
+        } catch (err) {
+          console.warn("Override USD->RAMA conversion failed:", err);
+        }
+      }
+
+      let tiers = [];
+      if (royaltyManager) {
+        try {
+          let tierCount = toNumber(
+            await royaltyManager.methods.getTierCount().call()
+          );
+          if (!Number.isFinite(tierCount) || tierCount <= 0)
+            tierCount = ROYALTY_LEVELS_FALLBACK.length;
+          const indices = Array.from({ length: tierCount }, (_, i) => i);
+          tiers = await Promise.all(
+            indices.map(async (i) => {
+              const [threshold, salary] = await Promise.all([
+                royaltyManager.methods.thresholdUSD(i).call(),
+                royaltyManager.methods.salaryUSD(i).call(),
+              ]);
+              return {
+                thresholdUsd: fromMicroUSD(threshold),
+                monthlyUsd: fromMicroUSD(salary),
+              };
+            })
+          );
+        } catch (err) {
+          console.warn("RoyaltyManager tier fetch failed:", err);
+        }
+      }
+      if (!tiers.length) {
+        tiers = ROYALTY_LEVELS_FALLBACK.map((level) => ({
+          thresholdUsd: fromMicroUSD(level.requiredVolumeUSD),
+          monthlyUsd: fromMicroUSD(level.monthlyRoyaltyUSD),
+        }));
+      }
+
+      let lastPaidTier = 0;
+      if (royaltyState) {
+        lastPaidTier = toNumber(royaltyState.lastPaidTier ?? royaltyState[0]);
+      }
+
+      return {
+        currentLevel,
+        lastPaidTier,
+        canClaim,
+        paused,
+        royaltyIncomeUsd: pendingRoyaltyUsd,
+        royaltyIncomeRama,
+        overrideIncomeUsd: overrideUsd,
+        overrideIncomeRama,
+        paidMonths,
+        lastPaidMonthEpoch,
+        nextMonthEpoch,
+        qualifiedVolumeUsd,
+        directs,
+        renewalSnapshotUsd,
+        renewalRecentUsd,
+        renewalTargetUsd,
+        renewalRequiredUsd,
+        tiers,
+      };
+    } catch (error) {
+      console.error("getRoyaltyOverview error:", error);
+      throw error;
+    }
+  },
+
+
+  
+  // =====================================================================
+  // One-Time Rewards 
+  // =====================================================================
+
+  getOneTimeRewardsOverview: async (userAddress) => {
+    try {
+      if (!userAddress) throw new Error("Missing user address");
+
+      const oceanViewV2 = makeContract(
+        OceanViewV2ABI,
+        Contract["OceanViewV2"]
+      );
+      const oceanQuery = makeContract(
+        OceanQueryUpgradeableABI,
+        Contract["OceanQueryUpgradeable"]
+      );
+      const rewardVault = makeContract(
+        RewardVaultABI,
+        Contract["RewardVault"]
+      );
+      const portfolioManager = makeContract(
+        PortFolioManagerABI,
+        Contract["PortFolioManager"]
+      );
+
+      const todayDayId = Math.floor(Date.now() / 86400000);
+      let summary = null;
+      if (oceanViewV2) {
+        try {
+          const dashboardData = await oceanViewV2.methods
+            .getDashboardData(userAddress, todayDayId)
+            .call();
+          summary = dashboardData?.[0] ?? null;
+        } catch (err) {
+          console.warn("OceanViewV2.getDashboardData (rewards) failed:", err);
+        }
+      }
+
+      const [
+        claimedCountRaw,
+        pendingRewardRaw,
+        userTotalsRaw,
+        claimedStatusRaw,
+        allMilestonesRaw,
+      ] = await Promise.all([
+        oceanQuery.methods.getTotalRewardsClaimed(userAddress).call(),
+        oceanQuery.methods.getOneTimeRewardIncome(userAddress).call(),
+        rewardVault
+          ? rewardVault.methods.getUserTotals(userAddress).call()
+          : [0, 0],
+        rewardVault
+          ? rewardVault.methods.getUserMilestoneStatus(userAddress).call()
+          : [],
+        rewardVault
+          ? rewardVault.methods.getAllMilestones().call()
+          : [[], []],
+      ]);
+
+      console.log(allMilestonesRaw)
+
+      const qualifiedVolumeUsd = summary
+        ? fromMicroUSD(summary?.qualifiedVolumeUsdMicro)
+        : 0;
+      const directs = summary ? toNumber(summary?.directRefs) : 0;
+
+      const claimedCount = toNumber(claimedCountRaw);
+      const pendingRewardUsd = fromWadToUsd(pendingRewardRaw);
+
+      let pendingRewardRama = 0;
+      if (portfolioManager && pendingRewardRaw && pendingRewardRaw !== "0") {
+        try {
+          const ramaWei = await portfolioManager.methods
+            .getPackageValueInRAMA(pendingRewardRaw)
+            .call();
+          pendingRewardRama = fromWeiToRama(ramaWei);
+        } catch (err) {
+          console.warn("One-time reward USD->RAMA conversion failed:", err);
+        }
+      }
+
+      const totalEarnedUsd = fromWadToUsd(userTotalsRaw?.[0] ?? 0);
+      const totalEarnedRama = fromWeiToRama(userTotalsRaw?.[1] ?? 0);
+
+      const thresholdsRaw = allMilestonesRaw?.[0] ?? [];
+      const rewardsRaw = allMilestonesRaw?.[1] ?? [];
+
+      let milestones = [];
+      if (thresholdsRaw.length && rewardsRaw.length) {
+        milestones = thresholdsRaw.map((threshold, idx) => {
+          const thresholdUsd = fromWadToUsd(threshold ?? 0);
+          const rewardUsd = fromWadToUsd(rewardsRaw[idx] ?? 0);
+          const claimed = Boolean(claimedStatusRaw?.[idx]);
+          const unlocked = qualifiedVolumeUsd >= thresholdUsd;
+          return {
+            idx,
+            thresholdUsd,
+            rewardUsd,
+            claimed,
+            unlocked,
+            claimable: unlocked && !claimed,
+          };
+        });
+      }
+
+      if (!milestones.length) {
+        milestones = ONE_TIME_REWARDS_FALLBACK.map((reward, idx) => {
+          const thresholdUsd = parseFloat(reward.requiredVolumeUSD) / 1e8;
+          const rewardUsd = parseFloat(reward.rewardUSD) / 1e8;
+          const claimed = Boolean(claimedStatusRaw?.[idx]);
+          const unlocked = qualifiedVolumeUsd >= thresholdUsd;
+          return {
+            idx,
+            thresholdUsd,
+            rewardUsd,
+            claimed,
+            unlocked,
+            claimable: unlocked && !claimed,
+          };
+        });
+      }
+
+      const claimedMilestones = milestones.filter((m) => m.claimed).length;
+      const remainingUsd = milestones
+        .filter((m) => !m.claimed)
+        .reduce((sum, m) => sum + (m.rewardUsd ?? 0), 0);
+
+      return {
+        claimedCount: claimedMilestones || claimedCount,
+        totalEarnedUsd,
+        totalEarnedRama,
+        pendingRewardUsd,
+        pendingRewardRama,
+        qualifiedVolumeUsd,
+        directs,
+        milestones,
+        remainingUsd,
+      };
+    } catch (error) {
+      console.error("getOneTimeRewardsOverview error:", error);
+      throw error;
+    }
+  },
+
+  oneTimeRewardClaimed: async (userAddress) => {
+    try {
+      if (!userAddress) throw new Error("Missing user address");
+
+      const oceanQuery = new web3.eth.Contract(
+        OceanQueryUpgradeableABI,
+        Contract["OceanQueryUpgradeable"]
+      );
+      const slabManag = new web3.eth.Contract(
+        SlabManagerABI,
+        Contract["SlabManager"]
+      );
+
+      const rewardClaimed = await oceanQuery.methods.getTotalRewardsClaimed(userAddress).call();
+      const slabIncome = await oceanQuery.methods.getSlabIncome(userAddress).call();
+      const slabIncomeAvail = await oceanQuery.methods.getSlabIncomeAvailable(userAddress).call();
+
+
+      const slapIndex = await slabManag.methods.getSlabIndex(userAddress).call();
+
+
+
+      return {
+        rewardClaimed,
+        slabIncome,
+        slabIncomeAvail,
+
+        slapIndex,
+        slabName: slabsName[slapIndex]
+      }
+
+    } catch (err) {
+      console.log(err)
+    }
+  },
 
 
 

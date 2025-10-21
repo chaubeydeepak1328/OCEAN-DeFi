@@ -216,7 +216,7 @@ export default function ClaimEarnings() {
                   >
                     <option value="">Choose income type...</option>
                     {incomeOptions.map((option) => {
-                      const amount = parseFloat(option.amount) / 1e8;
+                          const amount = parseFloat(option.amount) / 1e8;
                       const isDisabled = option.status === 'cooldown';
                       return (
                         <option key={option.id} value={option.id} disabled={isDisabled}>

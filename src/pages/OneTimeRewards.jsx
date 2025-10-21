@@ -1,41 +1,7 @@
-import { Gift, CheckCircle, Lock } from 'lucide-react';
-import { formatUSD } from '../utils/contractData';
-
-
-
-const USD_PRECISION = 100000000;
-
-function getMockUserStatus() {
-  return {
-    currentSlabIndex: '3',
-    qualifiedVolumeUSD: (12500 * USD_PRECISION).toString(),
-    directChildrenCount: '4',
-    nextSlabClaimRequiresDirects: '0',
-    currentRoyaltyLevelIndex: '2',
-    royaltyPayoutsReceived: '3',
-    royaltyRenewalVolumeRequiredUSD: (13750 * USD_PRECISION).toString(),
-    canClaimRoyalty: true,
-  };
-}
-
-const ONE_TIME_REWARDS = [
-  { requiredVolumeUSD: (6000 * USD_PRECISION).toString(), rewardUSD: (100 * USD_PRECISION).toString() },
-  { requiredVolumeUSD: (15000 * USD_PRECISION).toString(), rewardUSD: (250 * USD_PRECISION).toString() },
-  { requiredVolumeUSD: (40000 * USD_PRECISION).toString(), rewardUSD: (500 * USD_PRECISION).toString() },
-  { requiredVolumeUSD: (60000 * USD_PRECISION).toString(), rewardUSD: (750 * USD_PRECISION).toString() },
-  { requiredVolumeUSD: (120000 * USD_PRECISION).toString(), rewardUSD: (1000 * USD_PRECISION).toString() },
-  { requiredVolumeUSD: (300000 * USD_PRECISION).toString(), rewardUSD: (2500 * USD_PRECISION).toString() },
-  { requiredVolumeUSD: (600000 * USD_PRECISION).toString(), rewardUSD: (5000 * USD_PRECISION).toString() },
-  { requiredVolumeUSD: (1500000 * USD_PRECISION).toString(), rewardUSD: (8000 * USD_PRECISION).toString() },
-  { requiredVolumeUSD: (3000000 * USD_PRECISION).toString(), rewardUSD: (12000 * USD_PRECISION).toString() },
-  { requiredVolumeUSD: (6000000 * USD_PRECISION).toString(), rewardUSD: (30000 * USD_PRECISION).toString() },
-  { requiredVolumeUSD: (15000000 * USD_PRECISION).toString(), rewardUSD: (50000 * USD_PRECISION).toString() },
-  { requiredVolumeUSD: (30000000 * USD_PRECISION).toString(), rewardUSD: (85000 * USD_PRECISION).toString() },
-  { requiredVolumeUSD: (60000000 * USD_PRECISION).toString(), rewardUSD: (150000 * USD_PRECISION).toString() },
-  { requiredVolumeUSD: (200000000 * USD_PRECISION).toString(), rewardUSD: (500000 * USD_PRECISION).toString() },
-  { requiredVolumeUSD: (500000000 * USD_PRECISION).toString(), rewardUSD: (1500000 * USD_PRECISION).toString() },
-];
-
+import { useEffect, useMemo, useState } from 'react';
+import { Gift, CheckCircle, Lock, AlertCircle } from 'lucide-react';
+import { useStore } from '../../store/useUserInfoStore';
+import { ONE_TIME_REWARDS, formatUSD, formatRAMA } from '../utils/contractData';
 
 const REWARD_NAMES = [
   'Coral Spark',
@@ -45,21 +11,94 @@ const REWARD_NAMES = [
   'Wave Bounty',
   'Tide Treasure',
   'Blue Depth Bonus',
-  'Guardian\'s Gift',
-  'Captain\'s Chest',
+  "Guardian's Gift",
+  "Captain's Chest",
   'Trident Gem',
   'Sea Legend Award',
   'Abyss Crown',
-  'Poseidon\'s Favor',
+  "Poseidon's Favor",
   'Neptune Scepter',
   'Ocean Infinity',
 ];
 
 export default function OneTimeRewards() {
-  const userStatus = getMockUserStatus();
-  const qualifiedVolume = parseFloat(userStatus.qualifiedVolumeUSD);
+  const userAddress = localStorage.getItem('userAddress') || null;
+  const [overview, setOverview] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const claimedRewards = [0, 1, 2];
+  const getOneTimeRewardsOverview = useStore(
+    (s) => s.getOneTimeRewardsOverview
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      if (!userAddress) {
+        setOverview(null);
+        return;
+      }
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await getOneTimeRewardsOverview(userAddress);
+        if (!cancelled) setOverview(res);
+      } catch (err) {
+        console.error(err);
+        if (!cancelled) {
+          setError(err?.message || 'Unable to load one-time reward data.');
+          setOverview(null);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [userAddress, getOneTimeRewardsOverview]);
+
+  const fallbackMilestones = useMemo(
+    () =>
+      ONE_TIME_REWARDS.map((reward, idx) => ({
+        idx,
+        thresholdUsd: parseFloat(reward.requiredVolumeUSD) / 1e8,
+        rewardUsd: parseFloat(reward.rewardUSD) / 1e8,
+        claimed: false,
+        unlocked: false,
+        claimable: false,
+      })),
+    []
+  );
+
+  const milestonesCore = overview?.milestones?.length
+    ? overview.milestones
+    : fallbackMilestones;
+
+  const milestones = useMemo(
+    () =>
+      milestonesCore.map((milestone, idx) => ({
+        ...milestone,
+        name: REWARD_NAMES[idx] ?? `Milestone ${idx + 1}`,
+      })),
+    [milestonesCore]
+  );
+
+  const totalMilestones = milestones.length;
+  const claimedCount =
+    overview?.claimedCount ?? milestones.filter((m) => m.claimed).length;
+  const claimableMilestones = milestones.filter((m) => m.claimable);
+
+  const totalEarnedUsd = overview?.totalEarnedUsd ?? 0;
+  const totalEarnedRama = overview?.totalEarnedRama ?? 0;
+  const pendingRewardUsd = overview?.pendingRewardUsd ?? 0;
+  const pendingRewardRama = overview?.pendingRewardRama ?? 0;
+  const qualifiedVolume = overview?.qualifiedVolumeUsd ?? 0;
+
+  const remainingUsd = overview?.remainingUsd ?? milestones
+    .filter((m) => !m.claimed)
+    .reduce((sum, m) => sum + (m.rewardUsd ?? 0), 0);
 
   return (
     <div className="space-y-6">
@@ -68,8 +107,21 @@ export default function OneTimeRewards() {
           One-Time Rewards
           <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500/20 to-neon-green/20 blur-xl -z-10" />
         </h1>
-        <p className="text-cyan-300/90 mt-1">Achievement milestones with bonus rewards</p>
+        <p className="text-cyan-300/90 mt-1">
+          Achievement milestones with bonus rewards
+        </p>
       </div>
+
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/40 text-red-200 rounded-xl px-4 py-3 text-sm">
+          {error}
+        </div>
+      )}
+      {loading && (
+        <div className="text-sm text-cyan-200 flex items-center gap-2">
+          <AlertCircle size={16} /> Syncing one-time rewards…
+        </div>
+      )}
 
       <div className="grid md:grid-cols-3 gap-6">
         <div className="cyber-glass border border-neon-green/50 rounded-2xl p-6 text-white relative overflow-hidden group">
@@ -80,97 +132,117 @@ export default function OneTimeRewards() {
               <Gift size={24} />
             </div>
             <div>
-              <p className="text-sm font-medium uppercase tracking-wide">Rewards Claimed</p>
-              <p className="text-xs opacity-75">Out of 14 milestones</p>
+              <p className="text-sm font-medium uppercase tracking-wide">
+                Rewards Claimed
+              </p>
+              <p className="text-xs opacity-75">Out of {totalMilestones} milestones</p>
             </div>
           </div>
-          <p className="text-5xl font-bold mb-2 relative z-10">{claimedRewards.length}</p>
-          <p className="text-sm opacity-90 relative z-10">/ 14 Total</p>
+          <p className="text-5xl font-bold mb-2 relative z-10">
+            {claimedCount}
+          </p>
+          <p className="text-sm opacity-90 relative z-10">
+            {claimableMilestones.length} claimable right now
+          </p>
         </div>
 
-        <div className="cyber-glass rounded-xl p-6 border border-cyan-500/30 relative overflow-hidden">
-          <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
+        <div className="cyber-glass rounded-xl p-6 border border-cyan-500/30">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2 cyber-glass border border-cyan-500/30 rounded-lg">
               <CheckCircle className="text-cyan-400" size={24} />
             </div>
             <div>
-              <p className="text-sm font-medium text-cyan-400 uppercase tracking-wide">Total Earned</p>
-              <p className="text-xs text-cyan-300/90">From claimed rewards</p>
+              <p className="text-sm font-medium text-cyan-400 uppercase tracking-wide">
+                Total Earned
+              </p>
+              <p className="text-xs text-cyan-300/90">Claimed rewards</p>
             </div>
           </div>
-          <p className="text-3xl font-bold text-neon-green">{formatUSD(8500000000000n)}</p>
+          <p className="text-3xl font-bold text-neon-green">
+            {formatUSD(totalEarnedUsd)}
+          </p>
+          <p className="text-xs text-cyan-300/80 mt-1">
+            ≈ {formatRAMA(totalEarnedRama)} RAMA
+          </p>
         </div>
 
-        <div className="cyber-glass rounded-xl p-6 border border-cyan-500/30 relative overflow-hidden">
-          <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
+        <div className="cyber-glass rounded-xl p-6 border border-cyan-500/30">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2 cyber-glass border border-neon-purple/30 rounded-lg">
               <Lock className="text-neon-purple" size={24} />
             </div>
             <div>
-              <p className="text-sm font-medium text-cyan-400 uppercase tracking-wide">Remaining Potential</p>
+              <p className="text-sm font-medium text-cyan-400 uppercase tracking-wide">
+                Remaining Potential
+              </p>
               <p className="text-xs text-cyan-300/90">Unclaimed rewards</p>
             </div>
           </div>
-          <p className="text-3xl font-bold text-neon-purple">{formatUSD(234350000n)}</p>
+          <p className="text-3xl font-bold text-neon-purple">
+            {formatUSD(remainingUsd)}
+          </p>
+          <p className="text-xs text-cyan-300/80 mt-1">
+            Pending reward: {formatUSD(pendingRewardUsd)} • {formatRAMA(pendingRewardRama)} RAMA
+          </p>
         </div>
       </div>
 
       <div className="cyber-glass rounded-2xl p-6 border border-cyan-500/30 relative overflow-hidden">
         <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
-        <h2 className="text-lg font-semibold text-cyan-300 mb-6 uppercase tracking-wide">Milestone Progress</h2>
+        <h2 className="text-lg font-semibold text-cyan-300 mb-6 uppercase tracking-wide">
+          Milestone Progress
+        </h2>
+
+        <p className="text-sm text-cyan-300/80 mb-4">
+          Qualified volume: {formatUSD(qualifiedVolume)}
+        </p>
 
         <div className="space-y-4">
-          {ONE_TIME_REWARDS.map((reward, idx) => {
-            const requiredVolume = parseFloat(reward.requiredVolumeUSD);
-            const isClaimed = claimedRewards.includes(idx);
-            const isLocked = qualifiedVolume < requiredVolume;
+          {milestones.map((reward, idx) => {
+            const isClaimed = reward.claimed;
+            const isUnlocked = reward.unlocked;
+            const isClaimable = reward.claimable;
+            const isLocked = !isUnlocked;
 
             return (
               <div
-                key={idx}
-                className={`p-5 rounded-xl border-2 transition-all relative overflow-hidden group ${isClaimed
-                  ? 'cyber-glass border-neon-green hover:border-neon-green/80'
-                  : isLocked
-                    ? 'cyber-glass border-cyan-500/30 opacity-60'
-                    : 'cyber-glass border-cyan-500 hover:border-cyan-600'
-                  }`}
+                key={reward.idx}
+                className={`cyber-glass border border-cyan-500/20 rounded-xl p-4 transition-all ${
+                  isClaimed
+                    ? 'border-neon-green/40 bg-neon-green/5'
+                    : isClaimable
+                    ? 'border-cyan-500/40 bg-cyan-500/5'
+                    : 'bg-dark-950/40'
+                }`}
               >
-                {isClaimed && (
-                  <div className="absolute inset-0 bg-gradient-to-r from-neon-green/5 to-cyan-500/5" />
-                )}
-                {!isClaimed && !isLocked && (
-                  <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 to-neon-green/5" />
-                )}
-                <div className="flex items-center justify-between gap-4 relative z-10">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${isClaimed
-                        ? 'bg-gradient-to-br from-neon-green to-cyan-500 text-dark-950'
-                        : isLocked
-                          ? 'cyber-glass border border-cyan-500/30 text-cyan-400/50'
-                          : 'bg-gradient-to-br from-cyan-500 to-neon-green text-dark-950'
-                        }`}>
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center">
+                      <span className="text-lg font-semibold text-cyan-300">
                         {idx + 1}
-                      </div>
-                      <div>
-                        <p className={`font-semibold ${isClaimed ? 'text-neon-green' : isLocked ? 'text-cyan-400/50' : 'text-cyan-300'
-                          }`}>
-                          {REWARD_NAMES[idx]}
-                        </p>
-                        <p className="text-xs text-cyan-300/60">Reward #{idx + 1}</p>
-                        <p className="text-sm text-cyan-300/90">
-                          Required Volume: {formatUSD(reward.requiredVolumeUSD)}
-                        </p>
-                      </div>
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-cyan-200 uppercase tracking-wide">
+                        {reward.name ?? `Milestone ${idx + 1}`}
+                      </p>
+                      <p className="text-xs text-cyan-300/70">
+                        Required Volume: {formatUSD(reward.thresholdUsd)}
+                      </p>
                     </div>
                   </div>
 
                   <div className="text-right">
-                    <p className={`text-2xl font-bold mb-1 ${isClaimed ? 'text-neon-green' : isLocked ? 'text-cyan-400/50' : 'text-cyan-300'
-                      }`}>
-                      {formatUSD(reward.rewardUSD)}
+                    <p
+                      className={`text-2xl font-bold mb-1 ${
+                        isClaimed
+                          ? 'text-neon-green'
+                          : isLocked
+                          ? 'text-cyan-400/50'
+                          : 'text-cyan-300'
+                      }`}
+                    >
+                      {formatUSD(reward.rewardUsd)}
                     </p>
                     <div>
                       {isClaimed ? (
@@ -178,15 +250,15 @@ export default function OneTimeRewards() {
                           <CheckCircle size={14} />
                           Claimed
                         </span>
-                      ) : isLocked ? (
+                      ) : isClaimable ? (
+                        <button className="px-3 py-1 bg-gradient-to-r from-cyan-500 to-neon-green text-dark-950 rounded-full text-xs font-bold hover:shadow-neon-cyan transition-all">
+                          Claim Now
+                        </button>
+                      ) : (
                         <span className="inline-flex items-center gap-1 px-3 py-1 cyber-glass border border-cyan-500/20 text-cyan-400/50 rounded-full text-xs font-medium">
                           <Lock size={14} />
                           Locked
                         </span>
-                      ) : (
-                        <button className="px-3 py-1 bg-gradient-to-r from-cyan-500 to-neon-green text-dark-950 rounded-full text-xs font-bold hover:shadow-neon-cyan transition-all">
-                          Claim Now
-                        </button>
                       )}
                     </div>
                   </div>
@@ -200,15 +272,21 @@ export default function OneTimeRewards() {
       <div className="grid md:grid-cols-2 gap-6">
         <div className="cyber-glass rounded-2xl p-6 border border-cyan-500/30 relative overflow-hidden">
           <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
-          <h3 className="font-semibold text-cyan-300 mb-4 uppercase tracking-wide">How It Works</h3>
+          <h3 className="font-semibold text-cyan-300 mb-4 uppercase tracking-wide">
+            How It Works
+          </h3>
           <div className="space-y-3">
             <div className="flex items-start gap-3">
               <div className="w-6 h-6 rounded-full bg-gradient-to-br from-cyan-500/20 to-neon-green/20 border border-cyan-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
                 <span className="text-xs font-bold text-cyan-300">1</span>
               </div>
               <div>
-                <p className="text-sm font-medium text-cyan-300">Build Qualified Volume</p>
-                <p className="text-xs text-cyan-300/90">Grow your team using 40:30:30 calculation</p>
+                <p className="text-sm font-medium text-cyan-300">
+                  Build Qualified Volume
+                </p>
+                <p className="text-xs text-cyan-300/90">
+                  Grow your team using the 40:30:30 calculation for business volume.
+                </p>
               </div>
             </div>
             <div className="flex items-start gap-3">
@@ -216,8 +294,12 @@ export default function OneTimeRewards() {
                 <span className="text-xs font-bold text-cyan-300">2</span>
               </div>
               <div>
-                <p className="text-sm font-medium text-cyan-300">Reach Milestones</p>
-                <p className="text-xs text-cyan-300/90">Unlock rewards at $6,000 intervals</p>
+                <p className="text-sm font-medium text-cyan-300">
+                  Reach Milestones
+                </p>
+                <p className="text-xs text-cyan-300/90">
+                  Unlock rewards as your qualified volume crosses each milestone threshold.
+                </p>
               </div>
             </div>
             <div className="flex items-start gap-3">
@@ -226,7 +308,9 @@ export default function OneTimeRewards() {
               </div>
               <div>
                 <p className="text-sm font-medium text-cyan-300">Claim Rewards</p>
-                <p className="text-xs text-cyan-300/90">One-time bonus claimed to your wallet</p>
+                <p className="text-xs text-cyan-300/90">
+                  Claim one-time bonuses directly to your wallet once each milestone unlocks.
+                </p>
               </div>
             </div>
           </div>
@@ -234,47 +318,15 @@ export default function OneTimeRewards() {
 
         <div className="cyber-glass rounded-2xl p-6 border border-cyan-500/30 relative overflow-hidden">
           <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
-          <h3 className="font-semibold text-cyan-300 mb-4 uppercase tracking-wide">Reward Structure</h3>
-          <div className="space-y-2">
-            <div className="p-3 cyber-glass border border-cyan-500/20 rounded-lg">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-cyan-300">Milestones 1-3</span>
-                <span className="text-sm font-bold text-cyan-300">$100 each</span>
-              </div>
-            </div>
-            <div className="p-3 cyber-glass border border-neon-green/20 rounded-lg">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-neon-green/80">Milestones 4-6</span>
-                <span className="text-sm font-bold text-neon-green">$250 each</span>
-              </div>
-            </div>
-            <div className="p-3 cyber-glass border border-neon-orange/20 rounded-lg">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-neon-orange/80">Milestones 7-9</span>
-                <span className="text-sm font-bold text-neon-orange">$500 each</span>
-              </div>
-            </div>
-            <div className="p-3 cyber-glass border border-neon-purple/20 rounded-lg">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-neon-purple/80">Milestones 10-14</span>
-                <span className="text-sm font-bold text-neon-purple">$1,000 each</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="cyber-glass border border-cyan-500/30 rounded-xl p-4 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-neon-green/5 opacity-50" />
-        <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
-        <div className="flex items-start gap-3 relative z-10">
-          <Gift className="text-cyan-400 flex-shrink-0 mt-0.5" size={20} />
-          <div>
-            <p className="text-sm font-medium text-cyan-300 mb-1 uppercase tracking-wide">Achievement Rewards</p>
-            <p className="text-xs text-cyan-400/80">
-              One-time achievement rewards can be claimed to your Main Wallet (5% fee) or Safe Wallet (0% fee) when you reach volume milestones. These bonuses complement your recurring income streams and help you compound your earnings faster.
-            </p>
-          </div>
+          <h3 className="font-semibold text-cyan-300 mb-4 uppercase tracking-wide">
+            Tips for Faster Progress
+          </h3>
+          <ul className="space-y-3 text-xs text-cyan-300/90">
+            <li>• Maintain consistent team volume in all legs to meet 40:30:30 requirements.</li>
+            <li>• Track qualified volume in the dashboard to see which milestones are approaching.</li>
+            <li>• Encourage your directs to reach slab levels faster to unlock higher milestones.</li>
+            <li>• Reinvest pending rewards or claim to Safe Wallet for 0% fee restaking.</li>
+          </ul>
         </div>
       </div>
     </div>

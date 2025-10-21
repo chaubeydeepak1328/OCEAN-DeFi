@@ -1,29 +1,114 @@
-import { Trophy, TrendingUp, Clock, CheckCircle } from 'lucide-react';
-import { ROYALTY_LEVELS, formatUSD, getMockUserStatus } from '../utils/contractData';
+import { useEffect, useMemo, useState } from 'react';
+import { Trophy, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { useStore } from '../../store/useUserInfoStore';
+import {
+  ROYALTY_LEVELS,
+  formatUSD,
+  formatRAMA,
+} from '../utils/contractData';
 
-// Ocean-themed royalty tier names with symbolic meanings
 const ROYALTY_TIER_NAMES = [
-  'Coral Starter',      // Level 1 - $5,000 - First growth of coral in shallow waters
-  'Pearl Diver',        // Level 2 - $10,000 - Diver discovering value beneath the surface
-  'Sea Explorer',       // Level 3 - $20,000 - Expanding reach across the reef
-  'Wave Rider',         // Level 4 - $60,000 - Riding steady momentum of the market waves
-  'Tide Surge',         // Level 5 - $120,000 - Building consistent tidal strength
-  'Deep Blue',          // Level 6 - $300,000 - Operating confidently in deeper currents
-  'Ocean Guardian',     // Level 7 - $600,000 - Protecting and guiding the ecosystem
-  'Marine Commander',   // Level 8 - $1.5M - Leading fleets of contributors
-  'Aqua Captain',       // Level 9 - $3M - Commanding large territories of business
-  'Current Master',     // Level 10 - $5M - Mastery of consistent flow
-  'Sea Legend',         // Level 11 - $10M - Legendary influence over the network ocean
-  'Trident Icon',       // Level 12 - $30M - Wields the power of Poseidon's trident
-  'Poseidon Crown',     // Level 13 - $50M - Crowned ruler of the DeFi seas
-  'Ocean Supreme',      // Level 14 - $100M - Ultimate sovereign of the entire ocean realm
+  'Coral Starter',
+  'Pearl Diver',
+  'Sea Explorer',
+  'Wave Rider',
+  'Tide Surge',
+  'Deep Blue',
+  'Ocean Guardian',
+  'Marine Commander',
+  'Aqua Captain',
+  'Current Master',
+  'Sea Legend',
+  'Trident Icon',
+  'Poseidon Crown',
+  'Ocean Supreme',
 ];
 
+const parseMonthEpoch = (value) => {
+  if (!value) return '—';
+  const str = String(value);
+  if (str.length === 6) {
+    const year = str.slice(0, 4);
+    const month = str.slice(4);
+    return `${year}-${month}`;
+  }
+  if (value > 1e9 && value < 1e13) {
+    try {
+      return new Date(Number(value) * 1000).toLocaleDateString();
+    } catch (err) {
+      return str;
+    }
+  }
+  return str;
+};
+
 export default function RoyaltyProgram() {
-  const userStatus = getMockUserStatus();
-  const currentLevel = parseInt(userStatus.currentRoyaltyLevelIndex);
-  const payoutsReceived = parseInt(userStatus.royaltyPayoutsReceived);
-  const maxPayouts = "∞";
+  const userAddress = localStorage.getItem('userAddress') || null;
+  const [royaltyDetails, setRoyaltyDetails] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const getRoyaltyOverview = useStore((s) => s.getRoyaltyOverview);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      if (!userAddress) {
+        setRoyaltyDetails(null);
+        return;
+      }
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await getRoyaltyOverview(userAddress);
+        if (!cancelled) setRoyaltyDetails(res);
+      } catch (err) {
+        console.error(err);
+        if (!cancelled) {
+          setError(err?.message || 'Unable to load royalty data.');
+          setRoyaltyDetails(null);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [userAddress, getRoyaltyOverview]);
+
+  const tiers = useMemo(() => {
+    if (royaltyDetails?.tiers?.length) return royaltyDetails.tiers;
+    return ROYALTY_LEVELS.map((level) => ({
+      thresholdUsd: parseFloat(level.requiredVolumeUSD) / 1e8,
+      monthlyUsd: parseFloat(level.monthlyRoyaltyUSD) / 1e8,
+    }));
+  }, [royaltyDetails]);
+
+  const currentLevel = royaltyDetails?.currentLevel ?? 0;
+  const currentTier = currentLevel > 0 ? tiers[currentLevel - 1] : null;
+  const payoutsReceived = royaltyDetails?.paidMonths ?? 0;
+  const canClaim = royaltyDetails?.canClaim ?? false;
+  const paused = royaltyDetails?.paused ?? false;
+
+  const royaltyIncomeUsd = royaltyDetails?.royaltyIncomeUsd ?? 0;
+  const royaltyIncomeRama = royaltyDetails?.royaltyIncomeRama ?? 0;
+  const qualifiedVolumeUsd = royaltyDetails?.qualifiedVolumeUsd ?? 0;
+  const renewalSnapshotUsd = royaltyDetails?.renewalSnapshotUsd ?? 0;
+  const renewalRecentUsd = royaltyDetails?.renewalRecentUsd ?? 0;
+  const renewalRequiredUsd = royaltyDetails?.renewalRequiredUsd ?? 0;
+  const renewalTargetUsd = royaltyDetails?.renewalTargetUsd ?? 0;
+
+  const nextMonthEpoch = royaltyDetails?.nextMonthEpoch ?? 0;
+  const nextClaimLabel = canClaim
+    ? 'Ready Now'
+    : nextMonthEpoch
+    ? parseMonthEpoch(nextMonthEpoch)
+    : 'Not Ready';
+
+  const payoutProgress = Math.min(100, (payoutsReceived % 12) * (100 / 12));
 
   return (
     <div className="space-y-6">
@@ -32,8 +117,21 @@ export default function RoyaltyProgram() {
           Royalty Program
           <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500/20 to-neon-green/20 blur-xl -z-10" />
         </h1>
-        <p className="text-cyan-300/90 mt-1">Monthly recurring rewards for top performers</p>
+        <p className="text-cyan-300/90 mt-1">
+          Monthly recurring rewards for top performers
+        </p>
       </div>
+
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/40 text-red-200 rounded-xl px-4 py-3 text-sm">
+          {error}
+        </div>
+      )}
+      {loading && (
+        <div className="text-sm text-cyan-200 flex items-center gap-2">
+          <AlertCircle size={16} /> Syncing royalty data…
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="cyber-glass border border-neon-orange/50 rounded-2xl p-6 text-white">
@@ -46,10 +144,10 @@ export default function RoyaltyProgram() {
               <p className="text-xs opacity-75">Your royalty tier</p>
             </div>
           </div>
-          <p className="text-5xl font-bold mb-2">{currentLevel}</p>
-          {currentLevel > 0 && (
+          <p className="text-5xl font-bold mb-2">{currentLevel || '—'}</p>
+          {currentTier && (
             <p className="text-lg opacity-90">
-              {formatUSD(ROYALTY_LEVELS[currentLevel - 1].monthlyRoyaltyUSD)} / month
+              {formatUSD(currentTier.monthlyUsd)} / month
             </p>
           )}
         </div>
@@ -61,14 +159,14 @@ export default function RoyaltyProgram() {
             </div>
             <div>
               <p className="text-sm font-medium text-cyan-300">Payouts Received</p>
-              <p className="text-xs text-cyan-300/90">LifeTime</p>
+              <p className="text-xs text-cyan-300/90">Lifetime</p>
             </div>
           </div>
-          <p className="text-2xl font-bold text-cyan-300">{payoutsReceived} /∞ </p>
+          <p className="text-2xl font-bold text-cyan-300">{payoutsReceived}</p>
           <div className="mt-3 h-2 bg-slate-700 rounded-full overflow-hidden">
             <div
               className="h-full bg-gradient-to-r from-emerald-600 to-teal-600"
-              style={{ width: `${(payoutsReceived / maxPayouts) * 100}%` }}
+              style={{ width: `${payoutProgress}%` }}
             />
           </div>
         </div>
@@ -83,24 +181,34 @@ export default function RoyaltyProgram() {
               <p className="text-xs text-cyan-300/90">Monthly eligibility</p>
             </div>
           </div>
-          <p className="text-lg font-bold text-cyan-300">
-            {userStatus.canClaimRoyalty ? 'Ready Now' : 'Not Ready'}
-          </p>
-          {userStatus.canClaimRoyalty && (
+          <p className="text-lg font-bold text-cyan-300">{nextClaimLabel}</p>
+          {canClaim && (
             <button className="mt-3 w-full py-2 bg-gradient-to-r from-cyan-500 to-neon-green text-white rounded-lg text-sm font-medium">
               Claim Royalty
             </button>
           )}
+          {!canClaim && paused && (
+            <p className="text-xs text-neon-orange mt-3">
+              Royalty payouts are currently paused.
+            </p>
+          )}
+          <p className="text-xs text-cyan-300/70 mt-3">
+            Pending royalty: {formatUSD(royaltyIncomeUsd)} • {formatRAMA(royaltyIncomeRama)} RAMA
+          </p>
         </div>
       </div>
 
       <div className="cyber-glass rounded-2xl p-6 border border-cyan-500/30">
-        <h2 className="text-lg font-semibold text-cyan-300 mb-4">Royalty Tiers</h2>
+        <h2 className="text-lg font-semibold text-cyan-300 mb-4">
+          Royalty Tiers
+        </h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {ROYALTY_LEVELS.map((level, idx) => {
+          {tiers.map((tier, idx) => {
             const levelNum = idx + 1;
             const isAchieved = levelNum <= currentLevel;
             const isCurrent = levelNum === currentLevel;
+            const thresholdUsd = tier.thresholdUsd ?? 0;
+            const monthlyUsd = tier.monthlyUsd ?? 0;
 
             return (
               <div
@@ -115,23 +223,52 @@ export default function RoyaltyProgram() {
               >
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex flex-col">
-                    <span className={`text-lg font-bold ${isCurrent ? 'text-neon-orange' : isAchieved ? 'text-neon-green' : 'text-cyan-300/90'}`}>
+                    <span
+                      className={`text-lg font-bold ${
+                        isCurrent
+                          ? 'text-neon-orange'
+                          : isAchieved
+                          ? 'text-neon-green'
+                          : 'text-cyan-300/90'
+                      }`}
+                    >
                       {ROYALTY_TIER_NAMES[idx]}
                     </span>
-                    <span className="text-xs text-cyan-300/60">Tier #{levelNum}</span>
+                    <span className="text-xs text-cyan-300/60">
+                      Tier #{levelNum}
+                    </span>
                   </div>
                   {isAchieved && (
-                    <Trophy className={isCurrent ? 'text-amber-500' : 'text-emerald-500'} size={20} />
+                    <Trophy
+                      className={isCurrent ? 'text-amber-500' : 'text-emerald-500'}
+                      size={20}
+                    />
                   )}
                 </div>
                 <p className="text-sm text-cyan-300/90 mb-2">Required Volume</p>
                 <p className="text-lg font-semibold text-cyan-300 mb-3">
-                  {formatUSD(level.requiredVolumeUSD)}
+                  {formatUSD(thresholdUsd)}
                 </p>
-                <div className={`p-3 rounded-lg ${isCurrent ? 'bg-amber-500/20' : isAchieved ? 'bg-emerald-500/20' : 'bg-slate-700'}`}>
+                <div
+                  className={`p-3 rounded-lg ${
+                    isCurrent
+                      ? 'bg-amber-500/20'
+                      : isAchieved
+                      ? 'bg-emerald-500/20'
+                      : 'bg-slate-700'
+                  }`}
+                >
                   <p className="text-xs text-cyan-300/90 mb-1">Monthly Payout</p>
-                  <p className={`text-xl font-bold ${isCurrent ? 'text-neon-orange/80' : isAchieved ? 'text-neon-green/80' : 'text-cyan-400'}`}>
-                    {formatUSD(level.monthlyRoyaltyUSD)}
+                  <p
+                    className={`text-xl font-bold ${
+                      isCurrent
+                        ? 'text-neon-orange/80'
+                        : isAchieved
+                        ? 'text-neon-green/80'
+                        : 'text-cyan-400'
+                    }`}
+                  >
+                    {formatUSD(monthlyUsd)}
                   </p>
                 </div>
               </div>
@@ -150,7 +287,10 @@ export default function RoyaltyProgram() {
               </div>
               <div>
                 <p className="text-sm font-medium text-cyan-300">Monthly Payments</p>
-                <p className="text-xs text-cyan-300/90">Receive royalty payments once per month for up to LifeTime</p>
+                <p className="text-xs text-cyan-300/90">
+                  Receive royalty payments once per month for as long as you
+                  stay qualified.
+                </p>
               </div>
             </div>
             <div className="flex items-start gap-3">
@@ -159,7 +299,10 @@ export default function RoyaltyProgram() {
               </div>
               <div>
                 <p className="text-sm font-medium text-cyan-300">10% Growth Renewal</p>
-                <p className="text-xs text-cyan-300/90">Every 2 months, team volume must show 10% growth to continue</p>
+                <p className="text-xs text-cyan-300/90">
+                  Team volume must grow by 10% every two months to keep
+                  royalty status active.
+                </p>
               </div>
             </div>
             <div className="flex items-start gap-3">
@@ -168,7 +311,10 @@ export default function RoyaltyProgram() {
               </div>
               <div>
                 <p className="text-sm font-medium text-cyan-300">Claim to Wallet</p>
-                <p className="text-xs text-cyan-300/90">Transfer royalty payments to Safe Wallet (0% fee) or Main Wallet (5% fee)</p>
+                <p className="text-xs text-cyan-300/90">
+                  Transfer royalty payments to Safe Wallet (0% fee) or Main
+                  Wallet (5% fee).
+                </p>
               </div>
             </div>
           </div>
@@ -178,53 +324,34 @@ export default function RoyaltyProgram() {
           <h3 className="font-semibold text-cyan-300 mb-4">Renewal Status</h3>
           <div className="space-y-4">
             <div>
-              <p className="text-sm text-cyan-300/90 mb-2">Current Qualified Volume</p>
-              <p className="text-2xl font-bold text-cyan-300">{formatUSD(userStatus.qualifiedVolumeUSD)}</p>
+              <p className="text-sm text-cyan-300/90 mb-2">
+                Current Qualified Volume
+              </p>
+              <p className="text-2xl font-bold text-cyan-300">
+                {formatUSD(qualifiedVolumeUsd)}
+              </p>
             </div>
-            {parseFloat(userStatus.royaltyRenewalVolumeRequiredUSD) > 0 && (
+            {renewalTargetUsd > 0 && (
               <>
                 <div>
-                  <p className="text-sm text-cyan-300/90 mb-2">Required for Renewal</p>
+                  <p className="text-sm text-cyan-300/90 mb-2">
+                    Required for Renewal (10% growth)
+                  </p>
                   <p className="text-2xl font-bold text-neon-orange">
-                    {formatUSD(userStatus.royaltyRenewalVolumeRequiredUSD)}
+                    {formatUSD(renewalRequiredUsd)}
                   </p>
                 </div>
-                <div className="p-4 cyber-glass border border-neon-orange/20 rounded-lg">
-                  <p className="text-xs text-neon-orange/80">
-                    Next renewal check on payout #{payoutsReceived + 1}. Your team volume must show 10% growth from the snapshot.
+                <div className="p-4 cyber-glass border border-neon-orange/20 rounded-lg text-xs text-cyan-300/80">
+                  <p>
+                    Snapshot volume: {formatUSD(renewalSnapshotUsd)} • Current
+                    tracking: {formatUSD(renewalRecentUsd)}
+                  </p>
+                  <p className="mt-1">
+                    Next renewal check occurs with payout #{payoutsReceived + 1}.
                   </p>
                 </div>
               </>
             )}
-          </div>
-        </div>
-      </div>
-
-      <div className="cyber-glass border border-neon-orange/30 rounded-xl p-6">
-        <div className="flex items-start gap-4">
-          <TrendingUp className="text-neon-green flex-shrink-0 mt-1" size={24} />
-          <div>
-            <h4 className="font-semibold text-neon-green mb-2">Maximize Your Royalties - Lifetime Earnings!</h4>
-            <p className="text-sm text-neon-green/80 mb-3">
-              Build your team consistently to maintain the 10% growth requirement and unlock higher tiers for increased monthly payouts that continue FOR LIFE!
-            </p>
-            <div className="grid md:grid-cols-3 gap-3">
-              <div className="p-3 border border-neon-green rounded-lg">
-                <p className="text-xs text-neon-green/80 mb-1">Duration</p>
-                <p className="text-lg font-bold text-neon-orange flex items-center gap-1">LIFETIME <span className="text-2xl">∞</span></p>
-              </div>
-              <div className="p-3 border border-neon-green rounded-lg">
-                <p className="text-xs text-neon-green/80 mb-1">Top Tier Monthly</p>
-                <p className="text-lg font-bold text-neon-orange">$100,000</p>
-              </div>
-              <div className="p-3 border border-neon-green rounded-lg">
-                <p className="text-xs text-neon-green/80 mb-1">Total Potential</p>
-                <p className="text-lg font-bold text-neon-orange flex items-center gap-1">UNLIMITED <span className="text-2xl">∞</span></p>
-              </div>
-            </div>
-            <p className="text-xs text-center text-neon-green/90 mt-3 font-semibold">
-              No 24-month cap! Earn monthly royalties for life with 10% growth every 2 months 🌊
-            </p>
           </div>
         </div>
       </div>
