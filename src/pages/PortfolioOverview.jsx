@@ -169,8 +169,8 @@ const buildPortfolioData = (entry, dashboard) => {
     status = !activeFlag
       ? PortfolioStatus.Closed
       : frozenUntil && frozenUntil * 1000 > Date.now()
-      ? PortfolioStatus.Frozen
-      : PortfolioStatus.Active;
+        ? PortfolioStatus.Frozen
+        : PortfolioStatus.Active;
   }
 
   return {
@@ -278,15 +278,15 @@ export default function PortfolioOverview() {
 
       const detailResults = detailIds.length
         ? await Promise.all(
-            detailIds.map(async (pid) => {
-              try {
-                return await getPortfolioById(pid);
-              } catch (detailErr) {
-                console.warn(`getPortfolioDetails(${pid}) failed`, detailErr);
-                return null;
-              }
-            })
-          )
+          detailIds.map(async (pid) => {
+            try {
+              return await getPortfolioById(pid);
+            } catch (detailErr) {
+              console.warn(`getPortfolioDetails(${pid}) failed`, detailErr);
+              return null;
+            }
+          })
+        )
         : [];
 
       const detailMap = new Map(
@@ -297,15 +297,15 @@ export default function PortfolioOverview() {
 
       let combined = summaryEntries.length
         ? summaryEntries.map(({ pid, summary }) => ({
-            pid,
-            summary,
-            detail: detailMap.get(pid) ?? null,
-          }))
+          pid,
+          summary,
+          detail: detailMap.get(pid) ?? null,
+        }))
         : detailIds.map((pid) => ({
-            pid,
-            summary: null,
-            detail: detailMap.get(pid) ?? null,
-          }));
+          pid,
+          summary: null,
+          detail: detailMap.get(pid) ?? null,
+        }));
 
       if (!combined.length && Array.isArray(dashboard?.portfolios)) {
         combined = dashboard.portfolios
@@ -445,11 +445,10 @@ export default function PortfolioOverview() {
             >
               <RefreshCw
                 size={16}
-                className={`text-cyan-400 ${
-                  isRefreshing
-                    ? "animate-spin"
-                    : "group-hover:rotate-180 transition-transform duration-500"
-                }`}
+                className={`text-cyan-400 ${isRefreshing
+                  ? "animate-spin"
+                  : "group-hover:rotate-180 transition-transform duration-500"
+                  }`}
               />
               <span className="text-xs text-cyan-400 hidden sm:inline">
                 Refresh
@@ -463,11 +462,11 @@ export default function PortfolioOverview() {
             </div>
           </div>
         </div>
-      <div className="flex items-center gap-2 text-xs text-cyan-400/70">
-        <Clock size={12} />
-        <span>Last updated: {getTimeAgo(lastUpdated)}</span>
+        <div className="flex items-center gap-2 text-xs text-cyan-400/70">
+          <Clock size={12} />
+          <span>Last updated: {getTimeAgo(lastUpdated)}</span>
+        </div>
       </div>
-    </div>
 
       {portfolioIds.length > 0 && (
         <div className="cyber-glass border border-cyan-500/20 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center gap-3">
@@ -536,7 +535,7 @@ export default function PortfolioOverview() {
             <span className="text-cyan-400/70">vs last month</span>
           </div>
         </div>
-        
+
         <div className="cyber-glass rounded-xl p-4 border border-neon-green/30 hover:border-neon-green/80 relative overflow-hidden group transition-all">
           <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-neon-green/50 to-transparent" />
           <div className="flex items-center justify-between mb-2">
@@ -660,140 +659,70 @@ export default function PortfolioOverview() {
                 Cap Type:{" "}
                 {portfolio.isBooster ? "250% (Booster)" : "200% (Regular)"}
               </p>
-            </div>            
+            </div>
           </div>
         </div>
 
-        <div className="space-y-4">
-          <div className="cyber-glass border border-neon-green/50 hover:border-neon-green rounded-2xl p-5 sm:p-6 text-white relative overflow-hidden group transition-all">
-            <div className="absolute inset-0 bg-gradient-to-br from-neon-green/10 to-cyan-500/10 opacity-50 group-hover:opacity-70 transition-opacity" />
-            <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-neon-green/70 to-transparent" />
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-white/20 rounded-lg flex-shrink-0">
-                    <TrendingUp size={20} className="sm:w-6 sm:h-6" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold opacity-90 truncate">
-                      Accrued Growth
-                    </p>
-                    <p className="text-xs opacity-75 truncate">
-                      Available to claim
-                    </p>
-                  </div>
-                </div>
+
+        <div className="flex flex-col gap-10">
+          <div className="cyber-glass rounded-xl p-4 sm:p-5 border border-cyan-500/30 hover:border-cyan-500/80 relative overflow-hidden transition-all">
+            <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
+            <div className="flex items-center gap-2 mb-3">
+              <div className="p-2 cyber-glass border border-cyan-500/30 rounded-lg flex-shrink-0">
+                <Award className="text-cyan-400" size={18} />
+              </div>
+              <div className="flex items-center gap-1 flex-1 min-w-0">
+                <p className="text-xs sm:text-sm font-medium text-cyan-300 truncate uppercase tracking-wide">
+                  Qualified Volume
+                </p>
                 <Tooltip
-                  content="Your portfolio growth earnings that have accumulated and are ready to be claimed."
-                  position="left"
+                  content="Volume calculated using 40:30:30 formula - 40% from strongest leg, 30% from second, 30% from remaining legs."
+                  position="bottom"
                 >
-                  <Info size={16} className="text-white/60" />
+                  <Info size={12} className="text-cyan-400/70 flex-shrink-0" />
                 </Tooltip>
               </div>
-          <NumberPopup
-            value={formatUSD(portfolio.accruedGrowthUSD)}
-            label="Accrued Growth"
-            className="text-3xl sm:text-4xl font-bold mb-2 text-neon-glow"
-          />
-          <p className="text-xs opacity-75 mb-4">
-            ≈{" "}
-            {formatRAMA(portfolio.accruedGrowthRAMA)}{" "}
-            RAMA
-          </p>
-              <button className="w-full py-3 sm:py-3.5 bg-gradient-to-r from-neon-green to-cyan-500 hover:from-neon-green hover:to-neon-green text-dark-950 rounded-xl text-sm sm:text-base font-bold transition-all hover:shadow-neon-green hover:scale-[1.02] uppercase tracking-wide group relative overflow-hidden">
-                <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-                <span className="relative z-10 flex items-center justify-center gap-2">
-                  <span>Claim Now</span>
-                  <ArrowUpRight
-                    size={16}
-                    className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform"
-                  />
-                </span>
-              </button>
             </div>
+            <NumberPopup
+              value={formatUSD(userStatus.qualifiedVolumeUSD)}
+              label="Qualified Volume"
+              className="text-lg sm:text-xl font-bold text-cyan-300"
+            />
+            <p className="text-xs text-cyan-300/90 mt-1">40:30:30 Formula</p>
           </div>
 
-          <div className="cyber-glass rounded-2xl p-4 sm:p-6 border border-cyan-500/30 hover:border-cyan-500/80 relative overflow-hidden transition-all">
-            <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 cyber-glass border border-cyan-500/30 rounded-lg flex-shrink-0">
-                <Wallet className="text-cyan-400" size={18} />
+          <div className="cyber-glass rounded-xl p-4 sm:p-5 border border-neon-green/30 hover:border-neon-green/80 relative overflow-hidden transition-all">
+            <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-neon-green/50 to-transparent" />
+            <div className="flex items-center gap-2 mb-3">
+              <div className="p-2 cyber-glass border border-neon-green/30 rounded-lg flex-shrink-0">
+                <TrendingUp className="text-neon-green" size={18} />
               </div>
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-cyan-300 truncate uppercase tracking-wide">
-                  Safe Wallet
+              <div className="flex items-center gap-1 flex-1 min-w-0">
+                <p className="text-xs sm:text-sm font-medium text-neon-green truncate uppercase tracking-wide">
+                  Royalty Level
                 </p>
-                <p className="text-xs text-cyan-300/90 truncate">
-                  Fee-free balance
-                </p>
+                <Tooltip
+                  content="Your royalty tier based on qualified volume. Higher levels unlock monthly royalty payments."
+                  position="bottom"
+                >
+                  <Info size={12} className="text-neon-green/70 flex-shrink-0" />
+                </Tooltip>
               </div>
             </div>
-            <NumberPopup
-              value={`${formatRAMA(portfolio.safeWalletRAMA)} RAMA`}
-              label="Safe Wallet Balance"
-              className="text-xl sm:text-2xl font-bold text-cyan-300 mb-1"
-            />
-            <NumberPopup
-              value={`≈ ${formatUSD(portfolio.safeWalletUsdDisplay)}`}
-              label="Safe Wallet USD Value"
-              className="text-sm text-cyan-300/90"
-            />
+            <p className="text-lg sm:text-xl font-bold text-cyan-300">
+              Level {userStatus.currentRoyaltyLevelIndex}
+            </p>
+            <p className="text-xs text-cyan-300/90 mt-1">
+              {userStatus.royaltyPayoutsReceived} payments received
+            </p>
           </div>
         </div>
+
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="cyber-glass rounded-xl p-4 sm:p-5 border border-cyan-500/30 hover:border-cyan-500/80 relative overflow-hidden transition-all">
-          <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
-          <div className="flex items-center gap-2 mb-3">
-            <div className="p-2 cyber-glass border border-cyan-500/30 rounded-lg flex-shrink-0">
-              <Award className="text-cyan-400" size={18} />
-            </div>
-            <div className="flex items-center gap-1 flex-1 min-w-0">
-              <p className="text-xs sm:text-sm font-medium text-cyan-300 truncate uppercase tracking-wide">
-                Qualified Volume
-              </p>
-              <Tooltip
-                content="Volume calculated using 40:30:30 formula - 40% from strongest leg, 30% from second, 30% from remaining legs."
-                position="bottom"
-              >
-                <Info size={12} className="text-cyan-400/70 flex-shrink-0" />
-              </Tooltip>
-            </div>
-          </div>
-          <NumberPopup
-            value={formatUSD(userStatus.qualifiedVolumeUSD)}
-            label="Qualified Volume"
-            className="text-lg sm:text-xl font-bold text-cyan-300"
-          />
-          <p className="text-xs text-cyan-300/90 mt-1">40:30:30 Formula</p>
-        </div>
 
-        <div className="cyber-glass rounded-xl p-4 sm:p-5 border border-neon-green/30 hover:border-neon-green/80 relative overflow-hidden transition-all">
-          <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-neon-green/50 to-transparent" />
-          <div className="flex items-center gap-2 mb-3">
-            <div className="p-2 cyber-glass border border-neon-green/30 rounded-lg flex-shrink-0">
-              <TrendingUp className="text-neon-green" size={18} />
-            </div>
-            <div className="flex items-center gap-1 flex-1 min-w-0">
-              <p className="text-xs sm:text-sm font-medium text-neon-green truncate uppercase tracking-wide">
-                Royalty Level
-              </p>
-              <Tooltip
-                content="Your royalty tier based on qualified volume. Higher levels unlock monthly royalty payments."
-                position="bottom"
-              >
-                <Info size={12} className="text-neon-green/70 flex-shrink-0" />
-              </Tooltip>
-            </div>
-          </div>
-          <p className="text-lg sm:text-xl font-bold text-cyan-300">
-            Level {userStatus.currentRoyaltyLevelIndex}
-          </p>
-          <p className="text-xs text-cyan-300/90 mt-1">
-            {userStatus.royaltyPayoutsReceived} payments received
-          </p>
-        </div>
+
 
         <div className="cyber-glass rounded-xl p-4 sm:p-5 border border-neon-orange/30 hover:border-neon-orange/80  relative overflow-hidden transition-all">
           <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-neon-orange/50 to-transparent" />

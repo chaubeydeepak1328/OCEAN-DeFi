@@ -209,8 +209,8 @@ export default function RoyaltyProgram() {
             const levelNum = idx + 1;
             const isAchieved = levelNum <= currentLevel;
             const isCurrent = levelNum === currentLevel;
-            const thresholdUsd = parseFloat(tier.thresholdUsd)/1e12 ?? 0;
-            const monthlyUsd = parseFloat(tier.monthlyUsd)/1e12 ?? 0;
+            const thresholdUsd = parseFloat(tier.thresholdUsd)/1e12;
+            const monthlyUsd = parseFloat(tier.monthlyUsd)/1e12;
 
             return (
               <div
