@@ -9,6 +9,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } fro
 import { useStore } from '../../store/useUserInfoStore';
 import ProgressBar from '../components/ProgressBar';
 import Tooltip from "../components/Tooltip";
+import { useAppKitAccount } from '@reown/appkit/react';
 
 
 export default function Dashboard() {
@@ -24,6 +25,8 @@ export default function Dashboard() {
   const [portFolioDetails, setFortFolioDetails] = useState();
   const [DashBoardDetail, setDashboardDetails] = useState();
   const [last7Day, setLast7Days] = useState();
+
+  const { address, isConnected } = useAppKitAccount();
 
 
   const getTOtalPortFolio = useStore((s) => s.getTOtalPortFolio);
@@ -86,7 +89,7 @@ export default function Dashboard() {
   const GetPortFolioById = async () => {
     try {
       const res = await getPortFoliById(selectedPid);
-      console.log(res)
+      console.log("--->",res)
       setFortFolioDetails(res)
     } catch (error) {
       console.log(error)
@@ -149,8 +152,17 @@ export default function Dashboard() {
   const REMAINING_REWARD = CAP_TARGET - parseFloat(DashBoardDetail?.dashboardData?.summary?.accruedGrowthUsdMicro);
 
 
-
+  // ===========================================================
   // Lifetime 4× Cap Progress
+  // ===========================================================
+  const AllPortFolioSum = (DashBoardDetail?.dashboardData?.portfolios || []).reduce((accumulator, currentValue) => {
+    const val = parseFloat(currentValue?.principalUsdMicro || 0);
+    return accumulator + (isNaN(val) ? 0 : val);
+  }, 0);
+
+
+
+  console.log("sum of each portfolio ", AllPortFolioSum / 1e6)
 
 
   return (
@@ -355,6 +367,11 @@ export default function Dashboard() {
                     </p>
                     <p className="text-xs text-neon-orange/70 mt-0.5">Level {parseInt(DashBoardDetail?.slabPanel?.slabIndex)}</p>
                   </div>
+
+                  <div className="p-3 sm:p-4 cyber-glass rounded-xl border border-neon-orange/30 hover:border-gray/80 transition-all group">
+                    <p className="text-xs text-gray font-medium mb-1 uppercase tracking-wider">PORTFOLIO STATUS</p>
+                    <p className="text-lg sm:text-xl font-bold text-green  transition-all">{portFolioDetails?.active ?"Active":"In-Active"}</p>
+                  </div>
                 </div>
               )}
             </div>
@@ -363,100 +380,98 @@ export default function Dashboard() {
 
           {/* =========================================================== */}
 
-          <div className="cyber-glass rounded-2xl p-5 sm:p-6 border border-cyan-500/30 hover:border-cyan-500/80 relative overflow-hidden transition-all">
+          <div className="cyber-glass rounded-2xl p-4 sm:p-6 border border-cyan-500/30 hover:border-cyan-500/80 relative overflow-hidden transition-all">
             <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
-
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-cyan-300 uppercase tracking-wide">
-                  Lifetime 4× Cap Progress
-                </span>
-                <Tooltip content="Max your lifetime earnings can reach — 4× of your total historical staked amount.">
-                  <Info size={16} className="text-cyan-400/70 hover:text-cyan-300 transition-colors cursor-pointer" />
-                </Tooltip>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-base sm:text-lg font-semibold text-cyan-300 uppercase tracking-wide">
+                  Lifetime 4x Cap Progress
+                </h2>
+                <p className="text-xs text-cyan-300/80">
+                  Global earnings cap across all active portfolios
+                </p>
               </div>
-
-              <span className="text-sm font-semibold text-neon-green">
-                20 / 120 USD Earned
+              <span className="text-sm font-bold text-neon-green">
+                {10 ? `${20}%` : '—'}
               </span>
             </div>
 
-            <ProgressBar
-              progress={Math.min(100, (20 / 120) * 100)} // ✅ auto calculates %
-              current="20"
-              max="120"
-              label=""
-              color="green"
-              showMilestones={true}
-            />
-
-            <p className="text-xs text-cyan-400/70 mt-2">
-              Remaining Cap: <span className="text-neon-green font-medium">100 USD</span>
-            </p>
-
-
-
-
-            <div className="mt-6 grid grid-cols-3 gap-2 sm:gap-3 md:gap-4">
-              <div className="p-2.5 sm:p-3 md:p-4 cyber-glass rounded-xl border border-cyan-500/30 hover:border-cyan-500/80 min-w-0 transition-all overflow-hidden">
-                <div className="flex flex-col gap-0.5 mb-1">
-                  <p className="text-[10px] sm:text-xs text-cyan-400 font-medium sm:uppercase sm:tracking-wider leading-tight">
-                    TOTAL PORTFOLIO
+            {isConnected ? (
+              <div className="space-y-4">
+                <div>
+                  <div className="flex justify-between items-center mb-2 gap-2">
+                    <span className="text-xs sm:text-sm font-medium text-cyan-400 uppercase tracking-wider">
+                      Cap Progress
+                    </span>
+                    <span className="text-xs sm:text-sm font-bold text-neon-green">
+                      {10 ?? '—'}%
+                    </span>
+                  </div>
+                  <div className="h-3 bg-dark-900 rounded-full overflow-hidden border border-cyan-500/30 relative">
+                    <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 to-neon-green/20 animate-pulse" />
+                    <div
+                      className="h-full bg-gradient-to-r from-cyan-500 to-neon-green rounded-full transition-all relative z-10"
+                      style={{ width: `${10}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-cyan-300/90 mt-1">
+                    {formatUSD(10)} / {formatUSD(10)}
+                    <span className="ml-1 text-neon-green">4x cap</span>
                   </p>
-
                 </div>
-                <p className="text-base sm:text-lg md:text-xl font-bold text-cyan-300 whitespace-nowrap">
-                  12%
-                </p>
-              </div>
-              <div className="p-2.5 sm:p-3 md:p-4 cyber-glass rounded-xl border border-neon-green/30 hover:border-neon-green/80 min-w-0 transition-all overflow-hidden">
-                <div className="flex flex-col gap-0.5 mb-1">
-                  <p className="text-[10px] sm:text-xs text-neon-green font-medium sm:uppercase sm:tracking-wider leading-tight">
-                    TOTAL AVAILABLEL CAP
-                  </p>
 
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
+                  <div className="p-3 sm:p-4 cyber-glass rounded-xl border border-cyan-500/30 hover:border-cyan-500/80 transition-all">
+                    <p className="text-[11px] text-cyan-400 uppercase tracking-wider">
+                      Total Portfolio
+                    </p>
+                    <p className="text-lg sm:text-xl font-bold text-cyan-300">
+                      {formatUSD(AllPortFolioSum / 1e6)}
+                    </p>
+                    <p className="text-[11px] text-cyan-300/70 mt-1">
+                      Active stake amount
+                    </p>
+                  </div>
+                  <div className="p-3 sm:p-4 cyber-glass rounded-xl border border-neon-purple/30 hover:border-neon-purple/80 transition-all">
+                    <p className="text-[11px] text-neon-purple uppercase tracking-wider">
+                      Total Available Cap
+                    </p>
+                    <p className="text-lg sm:text-xl font-bold text-neon-purple">
+                      {formatUSD((AllPortFolioSum * 4) / 1e6)}
+                    </p>
+                    <p className="text-[11px] text-neon-purple/70 mt-1">
+                      4x of active portfolio
+                    </p>
+                  </div>
+                  <div className="p-3 sm:p-4 cyber-glass rounded-xl border border-neon-green/30 hover:border-neon-green/80 transition-all">
+                    <p className="text-[11px] text-neon-green uppercase tracking-wider">
+                      Used Cap
+                    </p>
+                    <p className="text-lg sm:text-xl font-bold text-neon-green">
+                      {formatUSD(0)}
+                    </p>
+                    <p className="text-[11px] text-neon-green/70 mt-1">
+                      Earned from ROI & slabs
+                    </p>
+                  </div>
+                  <div className="p-3 sm:p-4 cyber-glass rounded-xl border border-neon-orange/30 hover:border-neon-orange/80 transition-all">
+                    <p className="text-[11px] text-neon-orange uppercase tracking-wider">
+                      Remaining Cap
+                    </p>
+                    <p className="text-lg sm:text-xl font-bold text-neon-orange">
+                      {formatUSD(AllPortFolioSum / 1e6)}
+                    </p>
+                    <p className="text-[11px] text-neon-orange/70 mt-1">
+                      Capacity left to earn
+                    </p>
+                  </div>
                 </div>
-                <p className="text-base sm:text-lg md:text-xl font-bold text-neon-green whitespace-nowrap">
-                  45
-                </p>
               </div>
-              <div className="p-2.5 sm:p-3 md:p-4 cyber-glass rounded-xl border border-neon-orange/30 hover:border-neon-orange/80 min-w-0  transition-all overflow-hidden">
-                <div className="flex flex-col gap-0.5 mb-1">
-                  <p className="text-[10px] sm:text-xs text-neon-orange font-medium sm:uppercase sm:tracking-wider leading-tight">
-                    USED CAP
-                  </p>
-
-                </div>
-                <p className="text-base sm:text-lg md:text-xl font-bold text-neon-orange whitespace-nowrap">
-                  1
-                </p>
+            ) : (
+              <div className="p-3 sm:p-4 border border-cyan-500/20 rounded-xl bg-dark-900/40 text-xs text-cyan-300/80">
+                Connect your wallet to view lifetime cap progress.
               </div>
-
-              <div className="p-2.5 sm:p-3 md:p-4 cyber-glass rounded-xl border border-neon-orange/30 hover:border-neon-orange/80 min-w-0  transition-all overflow-hidden">
-                <div className="flex flex-col gap-0.5 mb-1">
-                  <p className="text-[10px] sm:text-xs text-neon-orange font-medium sm:uppercase sm:tracking-wider leading-tight">
-                    REMAINING CAP
-                  </p>
-
-                </div>
-                <p className="text-base sm:text-lg md:text-xl font-bold text-neon-orange whitespace-nowrap">
-                  1
-                </p>
-              </div>
-
-
-              <div className="p-2.5 sm:p-3 md:p-4 cyber-glass rounded-xl border border-neon-orange/30 hover:border-neon-orange/80 min-w-0  transition-all overflow-hidden">
-                <div className="flex flex-col gap-0.5 mb-1">
-                  <p className="text-[10px] sm:text-xs text-neon-orange font-medium sm:uppercase sm:tracking-wider leading-tight">
-                    Missed Income
-                  </p>
-
-                </div>
-                <p className="text-base sm:text-lg md:text-xl font-bold text-neon-orange whitespace-nowrap">
-                  1
-                </p>
-              </div>
-            </div>
+            )}
           </div>
 
           {/* =========================================================== */}

@@ -665,66 +665,7 @@ export default function PortfolioOverview() {
 
 
         <div className="flex flex-col gap-10">
-          <div className="cyber-glass rounded-xl p-4 sm:p-5 border border-cyan-500/30 hover:border-cyan-500/80 relative overflow-hidden transition-all">
-            <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
-            <div className="flex items-center gap-2 mb-3">
-              <div className="p-2 cyber-glass border border-cyan-500/30 rounded-lg flex-shrink-0">
-                <Award className="text-cyan-400" size={18} />
-              </div>
-              <div className="flex items-center gap-1 flex-1 min-w-0">
-                <p className="text-xs sm:text-sm font-medium text-cyan-300 truncate uppercase tracking-wide">
-                  Qualified Volume
-                </p>
-                <Tooltip
-                  content="Volume calculated using 40:30:30 formula - 40% from strongest leg, 30% from second, 30% from remaining legs."
-                  position="bottom"
-                >
-                  <Info size={12} className="text-cyan-400/70 flex-shrink-0" />
-                </Tooltip>
-              </div>
-            </div>
-            <NumberPopup
-              value={formatUSD(userStatus.qualifiedVolumeUSD)}
-              label="Qualified Volume"
-              className="text-lg sm:text-xl font-bold text-cyan-300"
-            />
-            <p className="text-xs text-cyan-300/90 mt-1">40:30:30 Formula</p>
-          </div>
-
-          <div className="cyber-glass rounded-xl p-4 sm:p-5 border border-neon-green/30 hover:border-neon-green/80 relative overflow-hidden transition-all">
-            <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-neon-green/50 to-transparent" />
-            <div className="flex items-center gap-2 mb-3">
-              <div className="p-2 cyber-glass border border-neon-green/30 rounded-lg flex-shrink-0">
-                <TrendingUp className="text-neon-green" size={18} />
-              </div>
-              <div className="flex items-center gap-1 flex-1 min-w-0">
-                <p className="text-xs sm:text-sm font-medium text-neon-green truncate uppercase tracking-wide">
-                  Royalty Level
-                </p>
-                <Tooltip
-                  content="Your royalty tier based on qualified volume. Higher levels unlock monthly royalty payments."
-                  position="bottom"
-                >
-                  <Info size={12} className="text-neon-green/70 flex-shrink-0" />
-                </Tooltip>
-              </div>
-            </div>
-            <p className="text-lg sm:text-xl font-bold text-cyan-300">
-              Level {userStatus.currentRoyaltyLevelIndex}
-            </p>
-            <p className="text-xs text-cyan-300/90 mt-1">
-              {userStatus.royaltyPayoutsReceived} payments received
-            </p>
-          </div>
-        </div>
-
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-
-
-
-        <div className="cyber-glass rounded-xl p-4 sm:p-5 border border-neon-orange/30 hover:border-neon-orange/80  relative overflow-hidden transition-all">
+          <div className="cyber-glass rounded-xl p-4 sm:p-5 border border-neon-orange/30 hover:border-neon-orange/80  relative overflow-hidden transition-all">
           <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-neon-orange/50 to-transparent" />
           <div className="flex items-center gap-2 mb-3">
             <div className="p-2 cyber-glass border border-neon-orange/30 rounded-lg flex-shrink-0">
@@ -779,6 +720,15 @@ export default function PortfolioOverview() {
             <ArrowUpRight size={10} />
           </button>
         </div>
+        </div>
+
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+
+
+
+
       </div>
 
       {portfolio.status === PortfolioStatus.Frozen && (
